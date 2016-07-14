@@ -22,21 +22,21 @@ function Cluster( data ) {
 
   if ( cluster.isMaster ) {
     const numCPUs = require( "os" ).cpus().length;
-    self.debug.main( "Starting up %s workers.", numCPUs );
+    self.debug.log( "Starting up %s workers.", numCPUs );
     for ( var i = 0; i < numCPUs; i++ ) {
       cluster.fork();
     }
     cluster.on( "online", function( worker ) {
-      self.debug.main( "Worker %s is online", worker.process.pid );
+      self.debug.log( "Worker %s is online", worker.process.pid );
     } );
     cluster.on( "exit", function( worker, code, signal ) {
-      self.debug.main( "Worker %s died. code %s signal %s", worker.process.pid, code, signal );
-      self.debug.main( "Starting a new worker" );
+      self.debug.log( "Worker %s died. code %s signal %s", worker.process.pid, code, signal );
+      self.debug.log( "Starting a new worker" );
       cluster.fork();
     } );
 
     process.on( "SIGINT", function() {
-      self.debug.main( "Caught interrupt signal" );
+      self.debug.log( "Caught interrupt signal" );
       process.exit();
     } );
   } else {
@@ -56,8 +56,8 @@ function Cluster( data ) {
 }
 
 Cluster.prototype.debug = {
-  main: debugF( "cluster:main" ),
-  worker: debugF( "cluster:worker" )
+  log: debugF( "cluster:main" ),
+  worker: debugF( "cluster:worker" ),
 };
 
 // Processed by tokens data structure
