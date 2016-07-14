@@ -70,7 +70,7 @@ WebServer.prototype.RequestHandler = function( request, response ) {
       response.end( "\n" );
       self.debug.request( "Error intersepted:\n %s", e.stack );
     }
-  }
+  });
 };
 
 WebServer.prototype.stop = function() {
