@@ -42,7 +42,7 @@ WebServer.prototype.RequestHandler = function( request, response ) {
   var data = "";
   request.addListener( "data", function( chunk ) { data += chunk; } );
   request.addListener( "end", function( ) {
-    if(data) {
+    if(data != "") {
       self.debug.debug( "Data: %s", data );
       try {
         data = JSON.parse( data );
@@ -52,7 +52,12 @@ WebServer.prototype.RequestHandler = function( request, response ) {
         response.end( "\n" );
         self.debug.debug( "Error intersepted:\n %s", e.stack );
       }
+    } else {
+      data = {};
     }
+    data._url = request.url.substr(1);
+    data._headers = request.headers;
+
     self.debug.debug( "Parsed data: %s", JSON.stringify( data, null, 2 ) );
     try {
       switch ( request.method ) {
@@ -71,13 +76,25 @@ WebServer.prototype.RequestHandler = function( request, response ) {
             }
           break;
         case "PUT":
-            throw new Error( "PUT" );
+            if(self.data.callbacks.put) {
+              self.data.callbacks.put(data, self.callbackExecutor)
+            } else {
+              throw new Error( "PUT" );
+            }
           break;
         case "DELETE":
-            throw new Error( "DELETE" );
+            if(self.data.callbacks.delete) {
+              self.data.callbacks.delete(data, self.callbackExecutor)
+            } else {
+              throw new Error( "DELETE" );
+            }
           break;
         case "PATCH":
-            throw new Error( "PATCH" );
+            if(self.data.callbacks.patch) {
+              self.data.callbacks.patch(data, self.callbackExecutor)
+            } else {
+              throw new Error( "PATCH" );
+            }
           break;
         default:
             throw new Error( "UNKNOW" );
