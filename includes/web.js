@@ -9,7 +9,7 @@ var http = require( "http" );
 // Debug module.
 const debugF = require( "debug" );
 
-const bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+const bind = function( fn, me ) { return function() { return fn.apply( me, arguments ); }; };
 
 
 /**
@@ -38,20 +38,20 @@ WebServer.prototype.RequestHandler = function( request, response ) {
   self.debug.request( "%s: %s", request.method, request.url );
   var data = "";
   try {
-    switch(request.method) {
-      case 'POST':
+    switch ( request.method ) {
+      case "POST":
           throw new Error( "POST" );
         break;
-      case 'GET':
+      case "GET":
           throw new Error( "GET" );
         break;
-      case 'PUT':
+      case "PUT":
           throw new Error( "PUT" );
         break;
-      case 'DELETE':
+      case "DELETE":
           throw new Error( "DELETE" );
         break;
-      case 'PATCH':
+      case "PATCH":
           throw new Error( "PATCH" );
         break;
       default:
@@ -65,7 +65,7 @@ WebServer.prototype.RequestHandler = function( request, response ) {
     response.end( "\n" );
     self.debug.request( "Error intersepted:\n %s", e.stack );
   }
-}
+};
 
 WebServer.prototype.stop = function() {
   var self = this;
@@ -73,11 +73,11 @@ WebServer.prototype.stop = function() {
       self.debug.main( "Worker stopped" );
       process.exit();
   } );
-}
+};
 
 WebServer.prototype.debug = {
   main: debugF( "http:main" ),
-  request: debugF( "http:request" ),
+  request: debugF( "http:request" )
 };
 
 module.exports = WebServer;

@@ -22,33 +22,33 @@ function Cluster( data ) {
 
   if ( cluster.isMaster ) {
     const numCPUs = require( "os" ).cpus().length;
-    self.debug.main("Starting up %s workers.", numCPUs);
+    self.debug.main( "Starting up %s workers.", numCPUs );
     for ( var i = 0; i < numCPUs; i++ ) {
       cluster.fork();
     }
     cluster.on( "online", function( worker ) {
-      self.debug.main("Worker %s is online", worker.process.pid );
+      self.debug.main( "Worker %s is online", worker.process.pid );
     } );
     cluster.on( "exit", function( worker, code, signal ) {
-      self.debug.main("Worker %s died. code %s signal %s", worker.process.pid, code, signal );
-      self.debug.main("Starting a new worker");
+      self.debug.main( "Worker %s died. code %s signal %s", worker.process.pid, code, signal );
+      self.debug.main( "Starting a new worker" );
       cluster.fork();
     } );
 
     process.on( "SIGINT", function() {
-      self.debug.main("Caught interrupt signal");
+      self.debug.main( "Caught interrupt signal" );
       process.exit();
     } );
   } else {
     var webServer = new webHttp( self.data );
 
     process.on( "SIGINT", function() {
-      self.debug.worker("Caught interrupt signal");
+      self.debug.worker( "Caught interrupt signal" );
       webServer.stop();
     } );
 
     process.on( "SIGTERM", function() {
-      self.debug.worker("Caught termination signal");
+      self.debug.worker( "Caught termination signal" );
       webServer.stop();
       }
     );
@@ -57,7 +57,7 @@ function Cluster( data ) {
 
 Cluster.prototype.debug = {
   main: debugF( "cluster:main" ),
-  worker: debugF( "cluster:worker" ),
+  worker: debugF( "cluster:worker" )
 };
 
 // Processed by tokens data structure
