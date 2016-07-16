@@ -4,9 +4,8 @@
  */
 "use strict";
 
+require( "dotenv" ).config();
 var http = require( "http" );
-
-// Debug module.
 const debugF = require( "debug" );
 
 const bind = function( fn, me ) { return function() { return fn.apply( me, arguments ); }; };
@@ -34,13 +33,16 @@ WebServer.prototype.data = {};
 
 WebServer.prototype.server = false;
 
+/**
+ * Process http request and collect POSt and PUT data.
+ */
 WebServer.prototype.RequestHandler = function( request, response ) {
   var self = this;
 
   self._response = response;
   self.debug.log( "%s: %s", request.method, request.url );
   var data = "";
-  var request_details = {};
+
 
   request.addListener( "data", function( chunk ) { data += chunk; } );
   request.addListener( "end", function( ) {
@@ -58,61 +60,85 @@ WebServer.prototype.RequestHandler = function( request, response ) {
       data = {};
     }
 
+    var request_details = {};
     request_details.url = request.url.substr(1);
     request_details.headers = request.headers;
 
-    self.debug.debug( "Parsed data: %s", JSON.stringify( data, null, 2 ) );
-    try {
-      switch ( request.method ) {
-        case "POST":
-            if(self.data.callbacks.post) {
-              self.data.callbacks.post(data, request_details, self.callbackExecutor)
-            } else {
-              throw new Error( "POST" );
-            }
-          break;
-        case "GET":
-            if(self.data.callbacks.get) {
-              self.data.callbacks.get(data, request_details, self.callbackExecutor)
-            } else {
-              throw new Error( "GET" );
-            }
-          break;
-        case "PUT":
-            if(self.data.callbacks.put) {
-              self.data.callbacks.put(data, request_details, self.callbackExecutor)
-            } else {
-              throw new Error( "PUT" );
-            }
-          break;
-        case "DELETE":
-            if(self.data.callbacks.delete) {
-              self.data.callbacks.delete(data, request_details, self.callbackExecutor)
-            } else {
-              throw new Error( "DELETE" );
-            }
-          break;
-        case "PATCH":
-            if(self.data.callbacks.patch) {
-              self.data.callbacks.patch(data, request_details, self.callbackExecutor)
-            } else {
-              throw new Error( "PATCH" );
-            }
-          break;
-        default:
-            throw new Error( "UNKNOW" );
-      }
-      //response.writeHead( 500, { "content-type": "application/json" } );
-      //response.write( JSON.stringify( { "error": "Internal error" }, null, 2 ) );
-      //response.end( "\n" );
-    } catch ( e ) {
-      response.writeHead( 500, { "content-type": "application/json" } );
-      response.write( JSON.stringify( { "error": "Internal error" }, null, 2 ) );
-      response.end( "\n" );
-      self.debug.debug( "Error intersepted:\n %s", e.stack );
+    if(self.data.callbacks.validate) {
+      self.data.callbacks.validate(data, request_details, function(err) {
+        if(!err) {
+          self.RequestProcess(request.method, response, request_details, data);
+        } else {
+          response.writeHead( 403, { "content-type": "application/json" } );
+          response.write( JSON.stringify( { "error": err.message }, null, 2 ) );
+          response.end( "\n" );
+          self.debug.debug( "Validation error: %s", e.message );
+        }
+      })
+    } else {
+      self.RequestProcess(request.method, response, request_details, data);
     }
   });
 };
+
+/**
+ * Process request and if implemented, call handlers.
+ */
+WebServer.prototype.RequestProcess = function(method, response, request_details, data) {
+  var self = this;
+
+  self.debug.debug( "Parsed data: %s", JSON.stringify( data, null, 2 ) );
+  try {
+    switch ( method ) {
+      case "POST":
+          if(self.data.callbacks.post) {
+            self.data.callbacks.post(data, request_details, self.callbackExecutor)
+          } else {
+            throw new Error( "POST" );
+          }
+        break;
+      case "GET":
+          if(self.data.callbacks.get) {
+            self.data.callbacks.get(data, request_details, self.callbackExecutor)
+          } else {
+            throw new Error( "GET" );
+          }
+        break;
+      case "PUT":
+          if(self.data.callbacks.put) {
+            self.data.callbacks.put(data, request_details, self.callbackExecutor)
+          } else {
+            throw new Error( "PUT" );
+          }
+        break;
+      case "DELETE":
+          if(self.data.callbacks.delete) {
+            self.data.callbacks.delete(data, request_details, self.callbackExecutor)
+          } else {
+            throw new Error( "DELETE" );
+          }
+        break;
+      case "PATCH":
+          if(self.data.callbacks.patch) {
+            self.data.callbacks.patch(data, request_details, self.callbackExecutor)
+          } else {
+            throw new Error( "PATCH" );
+          }
+        break;
+      default:
+          throw new Error( "UNKNOW" );
+    }
+  } catch ( e ) {
+    response.writeHead( 500, { "content-type": "application/json" } );
+    response.write( JSON.stringify( { "error": "Internal error" }, null, 2 ) );
+    response.end( "\n" );
+    self.debug.debug( "Error intersepted:\n %s", e.stack );
+  }
+}
+
+/**
+ * Output answer from handlers.
+ */
 WebServer.prototype.callbackExecutor = function(err, handler_response) {
   var self = this;
   self.debug.debug( "Handler responce:\n %s", JSON.stringify( handler_response , null, 2 ) );
@@ -124,6 +150,10 @@ WebServer.prototype.callbackExecutor = function(err, handler_response) {
     self._response.end( "\n" );
   }
 }
+
+/**
+ * Process server stop request.
+ */
 WebServer.prototype.stop = function() {
   var self = this;
   self.server.close( function() {
@@ -132,6 +162,9 @@ WebServer.prototype.stop = function() {
   } );
 };
 
+/**
+ * Define debug methods.
+ */
 WebServer.prototype.debug = {
   log: debugF( "http:log" ),
   request: debugF( "http:request" ),
