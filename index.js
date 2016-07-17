@@ -57,7 +57,7 @@ function Cluster( data ) {
 
 Cluster.prototype.debug = {
   log: debugF( "cluster:main" ),
-  worker: debugF( "cluster:worker" ),
+  worker: debugF( "cluster:worker" )
 };
 
 // Processed by tokens data structure
