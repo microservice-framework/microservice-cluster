@@ -4,7 +4,6 @@
  */
 "use strict";
 
-require( "dotenv" ).config();
 var http = require( "http" );
 const debugF = require( "debug" );
 
@@ -41,15 +40,16 @@ WebServer.prototype.RequestHandler = function( request, response ) {
 
   self._response = response;
   self.debug.log( "%s: %s", request.method, request.url );
+  var _buffer = "";
   var data = "";
 
 
-  request.addListener( "data", function( chunk ) { data += chunk; } );
+  request.addListener( "data", function( chunk ) { _buffer += chunk; } );
   request.addListener( "end", function( ) {
-    if(data != "") {
-      self.debug.debug( "Data: %s", data );
+    if(_buffer != "") {
+      self.debug.debug( "Data: %s", _buffer );
       try {
-        data = JSON.parse( data );
+        data = JSON.parse( _buffer );
       } catch ( e ) {
         response.writeHead( 500, { "content-type": "application/json" } );
         response.write( JSON.stringify( { "error": "Internal error" }, null, 2 ) );
@@ -65,14 +65,15 @@ WebServer.prototype.RequestHandler = function( request, response ) {
     request_details.headers = request.headers;
 
     if(self.data.callbacks.validate) {
-      self.data.callbacks.validate(data, request_details, function(err) {
+      self.data.callbacks.validate(request.method, _buffer, request_details, function(err) {
         if(!err) {
           self.RequestProcess(request.method, response, request_details, data);
         } else {
           response.writeHead( 403, { "content-type": "application/json" } );
           response.write( JSON.stringify( { "error": err.message }, null, 2 ) );
           response.end( "\n" );
-          self.debug.debug( "Validation error: %s", e.message );
+          self.debug.debug( "Validation error: %s", err.message );
+          return;
         }
       })
     } else {
