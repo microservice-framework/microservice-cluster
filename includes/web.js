@@ -144,7 +144,11 @@ WebServer.prototype.callbackExecutor = function(err, handler_response) {
   var self = this;
   self.debug.debug( "Handler responce:\n %s", JSON.stringify( handler_response , null, 2 ) );
   if(err) {
-    throw err;
+//    throw err;
+    console.log(JSON.stringify(err));
+    self._response.writeHead( 503, { "content-type": "application/json" } );
+    self._response.write( JSON.stringify( {'message': err.message }, null, 2 ) );
+    self._response.end( "\n" );
   }else{
     self._response.writeHead( handler_response.code, { "content-type": "application/json" } );
     self._response.write( JSON.stringify( handler_response.answer , null, 2 ) );
