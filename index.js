@@ -21,6 +21,9 @@ function Cluster( data ) {
   self.data = data;
 
   if ( cluster.isMaster ) {
+    if(data.pid)
+      fs.writeFileSync(data.pid, process.pid);
+    }
     const numCPUs = require( "os" ).cpus().length;
     self.debug.log( "Starting up %s workers.", numCPUs );
     for ( var i = 0; i < numCPUs; i++ ) {
