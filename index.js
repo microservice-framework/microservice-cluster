@@ -25,7 +25,12 @@ function Cluster( data ) {
     if(data.pid) {
       fs.writeFileSync(data.pid, process.pid);
     }
-    const numCPUs = require( "os" ).cpus().length;
+    let numCPUs = 1;
+    if(data.count) {
+      numCPUs = data.count;
+    } else {
+      numCPUs = require( "os" ).cpus().length;
+    }
     self.debug.log( "Starting up %s workers.", numCPUs );
     for ( var i = 0; i < numCPUs; i++ ) {
       cluster.fork();
