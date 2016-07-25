@@ -1,6 +1,6 @@
 {
   "name": "zenci-manager",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Web server starter package with single entry point.",
   "main": "index.js",
   "scripts": {
