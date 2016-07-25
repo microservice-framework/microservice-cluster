@@ -7,7 +7,8 @@
 "use strict";
 
 const cluster = require( "cluster" );
-var webHttp = require( "./includes/web.js" );
+const webHttp = require( "./includes/web.js" );
+const fs = require( "fs" );
 
 // Debug module.
 const debugF = require( "debug" );
