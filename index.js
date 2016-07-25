@@ -21,7 +21,7 @@ function Cluster( data ) {
   self.data = data;
 
   if ( cluster.isMaster ) {
-    if(data.pid)
+    if(data.pid) {
       fs.writeFileSync(data.pid, process.pid);
     }
     const numCPUs = require( "os" ).cpus().length;
