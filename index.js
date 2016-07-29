@@ -7,7 +7,7 @@
 'use strict';
 
 const cluster = require('cluster');
-const webHttp = require('./includes/web.js');
+const WebHttp = require('./includes/web.js');
 const fs = require('fs');
 
 // Debug module.
@@ -49,7 +49,7 @@ function Cluster(data) {
       process.exit();
     });
   } else {
-    var webServer = new webHttp(self.data);
+    var webServer = new WebHttp(self.data);
 
     process.on('SIGINT', function() {
       self.debug.worker('Caught interrupt signal');
