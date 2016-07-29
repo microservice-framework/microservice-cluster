@@ -4,7 +4,8 @@
   "description": "Web server starter package with single entry point.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "jscs": "jscs --fix index.js includes/*.js"
   },
   "repository": {
     "type": "git",
