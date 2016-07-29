@@ -91,7 +91,7 @@ WebServer.prototype.RequestProcess = function(method, response, request_details,
   self.debug.debug( "Parsed data: %s", JSON.stringify( data, null, 2 ) );
   try {
     if(self.data.callbacks[method]) {
-      self.data.callbacks[method](data, request_details, self.callbackExecutor);
+      self.data.callbacks[method](data, request_details, function(err, handler_response) { self.callbackExecutor(err, handler_response, response); });
     } else {
       throw new Error( "Do not support." );
     }
@@ -106,18 +106,18 @@ WebServer.prototype.RequestProcess = function(method, response, request_details,
 /**
  * Output answer from handlers.
  */
-WebServer.prototype.callbackExecutor = function(err, handler_response) {
+WebServer.prototype.callbackExecutor = function(err, handler_response, response) {
   var self = this;
   if(err) {
     self.debug.debug( "Handler responce error:\n %s", JSON.stringify( err , null, 2 ) );
-    self._response.writeHead( 503, { "content-type": "application/json" } );
-    self._response.write( JSON.stringify( {'message': err.message }, null, 2 ) );
-    self._response.end( "\n" );
+    response.writeHead( 503, { "content-type": "application/json" } );
+    response.write( JSON.stringify( {'message': err.message }, null, 2 ) );
+    response.end( "\n" );
   }else{
     self.debug.debug( "Handler responce:\n %s", JSON.stringify( handler_response , null, 2 ) );
-    self._response.writeHead( handler_response.code, { "content-type": "application/json" } );
-    self._response.write( JSON.stringify( handler_response.answer , null, 2 ) );
-    self._response.end( "\n" );
+    response.writeHead( handler_response.code, { "content-type": "application/json" } );
+    response.write( JSON.stringify( handler_response.answer , null, 2 ) );
+    response.end( "\n" );
   }
 }
 
