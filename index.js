@@ -62,6 +62,7 @@ function Cluster(data) {
       }
     );
   }
+  return cluster;
 }
 
 Cluster.prototype.debug = {
