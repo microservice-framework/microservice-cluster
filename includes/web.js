@@ -52,9 +52,10 @@ WebServer.prototype.RequestHandler = function(request, response) {
         data = JSON.parse(_buffer);
       } catch (e) {
         response.writeHead(500, { 'content-type': 'application/json' });
-        response.write(JSON.stringify({ error: 'Internal error' }, null, 2));
+        response.write(JSON.stringify({ error: e.message }, null, 2));
         response.end('\n');
         self.debug.debug('Error intersepted:\n %s', e.stack);
+        return;
       }
     } else {
       data = {};
