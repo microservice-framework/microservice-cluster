@@ -64,6 +64,7 @@ WebServer.prototype.RequestHandler = function(request, response) {
     var requestDetails = {};
     requestDetails.url = request.url.substr(1);
     requestDetails.headers = request.headers;
+    requestDetails._buffer = _buffer;
 
     if (self.data.callbacks.validate) {
       self.data.callbacks.validate(request.method, _buffer, requestDetails, function(err) {
