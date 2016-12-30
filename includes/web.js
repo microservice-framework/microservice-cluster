@@ -23,8 +23,22 @@ function WebServer(data) {
   this.callbackExecutor = bind(this.callbackExecutor, this);
 
   self.server = http.createServer(self.RequestHandler);
-  self.debug.log('Listen on :%s', self.data.port);
-  self.server.listen(self.data.port);
+
+  // Use random port if port settings is not provided.
+  if(!self.data.port) {
+    self.data.port = 0;
+  }
+
+  // Use address if provided.
+  if(self.data.hostname) {
+    self.server.listen(self.data.port, self.data.hostname);
+  } else {
+    self.server.listen(self.data.port);
+  }
+
+  self.server.on('listening', function() {
+    self.debug.log('Listen on :%s', self.server.address().port);
+  });
 }
 
 // Processed by tokens data structure

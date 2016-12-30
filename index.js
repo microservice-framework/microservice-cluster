@@ -44,6 +44,12 @@ function Cluster(data) {
       cluster.fork();
     });
 
+    cluster.on('listening', function(worker, address){
+      if(self.data.callbacks['init']) {
+        self.data.callbacks['init'](cluster, worker, address);
+      }
+    });
+
     process.on('SIGINT', function() {
       self.debug.log('Caught interrupt signal');
       process.exit();
