@@ -85,8 +85,12 @@ WebServer.prototype.RequestHandler = function(request, response) {
         if (!err) {
           self.RequestProcess(request.method, response, requestDetails, data);
         } else {
-          response.writeHead(403, { 'content-type': 'application/json' });
-          response.write(JSON.stringify({ error: err.message }, null, 2));
+          var code = 403;
+          if(err.code) {
+            code = err.code;
+          }
+          response.writeHead(code, { 'content-type': 'application/json' });
+          response.write(JSON.stringify({ message: err.message }, null, 2));
           response.end('\n');
           self.debug.debug('Validation error: %s', err.message);
           return;
