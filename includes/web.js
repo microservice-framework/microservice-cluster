@@ -52,7 +52,6 @@ WebServer.prototype.server = false;
 WebServer.prototype.RequestHandler = function(request, response) {
   var self = this;
 
-  self._response = response;
   self.debug.log('%s: %s', request.method, request.url);
   var _buffer = '';
   var data = '';
@@ -60,11 +59,20 @@ WebServer.prototype.RequestHandler = function(request, response) {
 
   request.addListener('data', function(chunk) { _buffer += chunk; });
   request.addListener('end', function() {
+    var requestDetails = {};
+    requestDetails.url = request.url.substr(1);
+    requestDetails.headers = request.headers;
+    requestDetails._buffer = _buffer;
+    requestDetails.method = request.method;
+
     if (_buffer != '') {
       self.debug.debug('Data: %s', _buffer);
       try {
         data = JSON.parse(_buffer);
       } catch (e) {
+        if (self.data.callbacks["responseHandler"]) {
+          return self.data.callbacks["responseHandler"](e, null, response, requestDetails);
+        }
         response.writeHead(500, { 'content-type': 'application/json' });
         response.write(JSON.stringify({ error: e.message }, null, 2));
         response.end('\n');
@@ -75,21 +83,18 @@ WebServer.prototype.RequestHandler = function(request, response) {
       data = {};
     }
 
-    var requestDetails = {};
-    requestDetails.url = request.url.substr(1);
-    requestDetails.headers = request.headers;
-    requestDetails._buffer = _buffer;
-
     if (self.data.callbacks.validate) {
       self.data.callbacks.validate(request.method, _buffer, requestDetails, function(err) {
         if (!err) {
           self.RequestProcess(request.method, response, requestDetails, data);
         } else {
-          var code = 403;
-          if(err.code) {
-            code = err.code;
+          if(!err.code) {
+            err.code = 403;
           }
-          response.writeHead(code, { 'content-type': 'application/json' });
+          if (self.data.callbacks["responseHandler"]) {
+            return self.data.callbacks["responseHandler"](err, null, response, requestDetails);
+          }
+          response.writeHead(err.code, { 'content-type': 'application/json' });
           response.write(JSON.stringify({ message: err.message }, null, 2));
           response.end('\n');
           self.debug.debug('Validation error: %s', err.message);
@@ -112,24 +117,34 @@ WebServer.prototype.RequestProcess = function(method, response, requestDetails, 
   try {
     if (self.data.callbacks[method]) {
       self.data.callbacks[method](data, requestDetails, function(err, handlerResponse) {
-        self.callbackExecutor(err, handlerResponse, response);
+        self.callbackExecutor(err, handlerResponse, response, requestDetails);
       });
     } else {
       throw new Error('Do not support.');
     }
   } catch (e) {
-    response.writeHead(500, { 'content-type': 'application/json' });
+    self.debug.debug('Error intersepted:\n %s', e.stack);
+    e.code = 500;
+
+    if (self.data.callbacks["responseHandler"]) {
+      return self.data.callbacks["responseHandler"](e, null, response, requestDetails);
+    }
+    response.writeHead(e.code, { 'content-type': 'application/json' });
     response.write(JSON.stringify({ error: e.message }, null, 2));
     response.end('\n');
-    self.debug.debug('Error intersepted:\n %s', e.stack);
   }
 }
 
 /**
  * Output answer from handlers.
  */
-WebServer.prototype.callbackExecutor = function(err, handlerResponse, response) {
+WebServer.prototype.callbackExecutor = function(err, handlerResponse, response, requestDetails) {
   var self = this;
+
+  if (self.data.callbacks["responseHandler"]) {
+    return self.data.callbacks["responseHandler"](err, handlerResponse, response, requestDetails);
+  }
+
   if (err) {
     self.debug.debug('Handler responce error:\n %s', JSON.stringify(err , null, 2));
     response.writeHead(503, { 'content-type': 'application/json' });
