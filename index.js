@@ -52,6 +52,7 @@ function Cluster(data) {
 
     process.on('SIGINT', function() {
       self.debug.log('Caught interrupt signal');
+      fs.unlinkSync(data.pid);
       process.exit();
     });
   } else {
