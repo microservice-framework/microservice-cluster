@@ -152,7 +152,14 @@ WebServer.prototype.callbackExecutor = function(err, handlerResponse, response, 
     response.end('\n');
   }else {
     self.debug.debug('Handler responce:\n %s', JSON.stringify(handlerResponse , null, 2));
-    response.writeHead(handlerResponse.code, { 'content-type': 'application/json' });
+    if(handlerResponse.headers) {
+      if(!handlerResponse.headers['content-type']) {
+        handlerResponse.headers['content-type'] = 'application/json';
+      }
+    } else {
+      handlerResponse.headers = { 'content-type': 'application/json' };
+    }
+    response.writeHead(handlerResponse.code, handlerResponse.headers );
     response.write(JSON.stringify(handlerResponse.answer , null, 2));
     response.end('\n');
   }
