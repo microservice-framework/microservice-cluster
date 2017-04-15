@@ -7,8 +7,8 @@ Simple example:
 ```
 'use strict';
 
-const Cluster = require('microservice-cluster');
-const Microservice = require('microservice');
+const Cluster = require('@microservice-framework/microservice-cluster');
+const Microservice = require('@microservice-framework/microservice');
 
 require('dotenv').config();
 
