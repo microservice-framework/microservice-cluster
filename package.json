@@ -1,7 +1,7 @@
 {
-  "name": "zenci-manager",
-  "version": "0.2.5",
-  "description": "Web server starter package with single entry point.",
+  "name": "microservice-cluster",
+  "version": "1.0.0",
+  "description": "Microservice cluster library.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/itpatrol/zenci-manager.git"
+    "url": "git+https://github.com/itpatrol/microservice-cluster.git"
   },
   "keywords": [
     "cluster"
@@ -17,9 +17,9 @@
   "author": "Gormartsen",
   "license": "SEE LICENSE IN <LICENSE.txt>",
   "bugs": {
-    "url": "https://github.com/itpatrol/zenci-manager/issues"
+    "url": "https://github.com/itpatrol/microservice-cluster/issues"
   },
-  "homepage": "https://github.com/itpatrol/zenci-manager#readme",
+  "homepage": "https://github.com/itpatrol/microservice-cluster#readme",
   "dependencies": {
     "cluster": "^0.7.7",
     "debug": "^2.2.0"
