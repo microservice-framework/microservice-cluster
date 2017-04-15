@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/itpatrol/microservice-cluster.git"
+    "url": "git+https://github.com/microservice-framework/microservice-cluster.git"
   },
   "keywords": [
     "cluster"
@@ -17,9 +17,9 @@
   "author": "Gormartsen",
   "license": "GPL-3.0",
   "bugs": {
-    "url": "https://github.com/itpatrol/microservice-cluster/issues"
+    "url": "https://github.com/microservice-framework/microservice-cluster/issues"
   },
-  "homepage": "https://github.com/itpatrol/microservice-cluster#readme",
+  "homepage": "https://github.com/microservice-framework/microservice-cluster#readme",
   "dependencies": {
     "cluster": "^0.7.7",
     "debug": "^2.2.0"
