@@ -1,5 +1,5 @@
 {
-  "name": "microservice-cluster",
+  "name": "@microservice-framework/microservice-cluster",
   "version": "1.0.0",
   "description": "Microservice cluster library.",
   "main": "index.js",
