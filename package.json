@@ -15,7 +15,7 @@
     "cluster"
   ],
   "author": "Gormartsen",
-  "license": "SEE LICENSE IN <LICENSE.txt>",
+  "license": "GPL-3.0",
   "bugs": {
     "url": "https://github.com/itpatrol/microservice-cluster/issues"
   },
