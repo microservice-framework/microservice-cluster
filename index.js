@@ -10,10 +10,10 @@ require('dotenv').config();
 const fs = require('fs');
 const spawn = require('child_process').spawn;
 
-if(!process.env.DEVEL && process.env.LOGFILE && !process.env.BACKGROUND) {
+if (!process.env.DEVEL && process.env.LOGFILE && !process.env.BACKGROUND) {
   var spawnArgvs = [];
-  for(var i in process.argv){
-    if(i > 0) {
+  for (var i in process.argv) {
+    if (i > 0) {
       spawnArgvs.push(process.argv[i]);
     }
   }
@@ -27,7 +27,7 @@ if(!process.env.DEVEL && process.env.LOGFILE && !process.env.BACKGROUND) {
   process.exit();
 }
 
-if(process.env.BACKGROUND) {
+if (process.env.BACKGROUND) {
   process.env.DEBUG_COLORS = false;
   var logFile = fs.createWriteStream(process.env.LOGFILE, { flags: 'a' });
   process.stdout.write = process.stderr.write = logFile.write.bind(logFile);
