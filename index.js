@@ -6,11 +6,37 @@
 
 'use strict';
 
+require('dotenv').config();
+const fs = require('fs');
+const spawn = require('child_process').spawn;
+
+if(!process.env.DEVEL && process.env.LOGFILE && !process.env.BACKGROUND) {
+  var spawnArgvs = [];
+  for(var i in process.argv){
+    if(i > 0) {
+      spawnArgvs.push(process.argv[i]);
+    }
+  }
+  console.log(process.argv0);
+  console.log(spawnArgvs);
+  var env = process.env;
+  env.BACKGROUND = true;
+  spawn(process.argv0, spawnArgvs, {
+    stdio: 'ignore',
+    detached: true,
+    env: env,
+  }).unref();
+  process.exit();
+}
+
+if(process.env.BACKGROUND) {
+  process.env.DEBUG_COLORS = false;
+  var logFile = fs.createWriteStream(process.env.LOGFILE, { flags: 'a' });
+  process.stdout.write = process.stderr.write = logFile.write.bind(logFile);
+}
+
 const cluster = require('cluster');
 const WebHttp = require('./includes/web.js');
-const fs = require('fs');
-
-// Debug module.
 const debugF = require('debug');
 
 /**
