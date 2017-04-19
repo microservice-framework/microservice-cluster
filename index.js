@@ -17,8 +17,6 @@ if(!process.env.DEVEL && process.env.LOGFILE && !process.env.BACKGROUND) {
       spawnArgvs.push(process.argv[i]);
     }
   }
-  console.log(process.argv0);
-  console.log(spawnArgvs);
   var env = process.env;
   env.BACKGROUND = true;
   spawn(process.argv0, spawnArgvs, {
