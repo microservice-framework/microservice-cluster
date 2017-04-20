@@ -27,6 +27,14 @@ if (!process.env.DEVEL && process.env.LOGFILE && !process.env.BACKGROUND) {
   process.exit();
 }
 
+if (process.env.DEVEL) {
+  if (process.env.DEVEL_DEBUG) {
+    process.env.DEBUG = process.env.DEVEL_DEBUG;
+  } else {
+    process.env.DEBUG = '*';
+  }
+}
+
 if (process.env.BACKGROUND) {
   process.env.DEBUG_COLORS = false;
   var logFile = fs.createWriteStream(process.env.LOGFILE, { flags: 'a' });
@@ -79,7 +87,9 @@ function Cluster(data) {
 
     process.on('SIGINT', function() {
       self.debug.log('Caught interrupt signal');
-      fs.unlinkSync(data.pid);
+      if (data.pid) {
+        fs.unlinkSync(data.pid);
+      }
       process.exit();
     });
   } else {
