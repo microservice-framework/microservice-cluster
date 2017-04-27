@@ -1,6 +1,11 @@
 # microservice-cluster
 
-Cluster wrapper that spin up JSON based instances of Microservice.
+[![Gitter](https://img.shields.io/gitter/room/microservice-framework/chat.svg?style=flat-square)](https://gitter.im/microservice-framework/chat)
+[![npm](https://img.shields.io/npm/dt/@microservice-framework/microservice-cluster.svg?style=flat-square)](https://www.npmjs.com/~microservice-framework)
+[![microservice-frame.work](https://img.shields.io/badge/online%20docs-200-green.svg?style=flat-square)](http://microservice-frame.work)
+
+
+Microservice framework Cluster wrapper that spin up instances of Microservice.
 
 Simple example:
 
@@ -35,3 +40,5 @@ var mControlCluster = new Cluster({
 });
 
 ```
+
+For more details please check our [website](http://microservice-frame.work)
