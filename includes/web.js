@@ -82,9 +82,8 @@ WebServer.prototype.RequestHandler = function(request, response) {
     } else {
       data = {};
     }
-
-    if (self.data.callbacks.validate) {
-      self.data.callbacks.validate(request.method, _buffer, requestDetails, function(err) {
+    if (self.data.callbacks.loader) {
+      self.data.callbacks.loader(request.method, _buffer, requestDetails, function(err) {
         if (err) {
           if (!err.code) {
             err.code = 403;
@@ -98,13 +97,40 @@ WebServer.prototype.RequestHandler = function(request, response) {
           self.debug.debug('Validation error: %s', err.message);
           return;
         }
-        return self.RequestProcess(request.method, response, requestDetails, data);
+        return self.RequestValidate(request, response, _buffer, requestDetails, data);
       });
       return;
     }
-    return self.RequestProcess(request.method, response, requestDetails, data);
+    return self.RequestValidate(request, response, _buffer, requestDetails, data);
   });
 };
+
+/**
+ * Process request and if implemented, call handlers.
+ */
+WebServer.prototype.RequestValidate = function(request, response, _buffer, requestDetails, data) {
+  var self = this;
+  if (self.data.callbacks.validate) {
+    self.data.callbacks.validate(request.method, _buffer, requestDetails, function(err) {
+      if (err) {
+        if (!err.code) {
+          err.code = 403;
+        }
+        if (self.data.callbacks['responseHandler']) {
+          return self.data.callbacks['responseHandler'](err, null, response, requestDetails);
+        }
+        response.writeHead(err.code, { 'content-type': 'application/json' });
+        response.write(JSON.stringify({ message: err.message }, null, 2));
+        response.end('\n');
+        self.debug.debug('Validation error: %s', err.message);
+        return;
+      }
+      return self.RequestProcess(request.method, response, requestDetails, data);
+    });
+    return;
+  }
+  return self.RequestProcess(request.method, response, requestDetails, data);
+}
 
 /**
  * Process request and if implemented, call handlers.
