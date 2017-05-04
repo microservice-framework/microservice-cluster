@@ -141,6 +141,12 @@ WebServer.prototype.RequestProcess = function(method, response, requestDetails, 
   self.debug.debug('Parsed data: %O', data);
   try {
     if (self.data.callbacks[method]) {
+      if (method == 'OPTIONS') {
+        return self.data.callbacks[method](data, requestDetails, self.data.callbacks,
+          function(err, handlerResponse) {
+            self.callbackExecutor(err, handlerResponse, response, requestDetails);
+          });
+      }
       self.data.callbacks[method](data, requestDetails, function(err, handlerResponse) {
         self.callbackExecutor(err, handlerResponse, response, requestDetails);
       });
