@@ -191,7 +191,7 @@ WebServer.prototype.callbackExecutor = function(err, handlerResponse, response, 
       handlerResponse.headers = { 'content-type': 'application/json' };
     }
     response.writeHead(handlerResponse.code, handlerResponse.headers);
-    if(typeof handlerResponse.answer == 'string') {
+    if (typeof handlerResponse.answer == 'string') {
       response.write(handlerResponse.answer);
     } else {
       response.write(JSON.stringify(handlerResponse.answer , null, 2));
