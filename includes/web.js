@@ -51,7 +51,11 @@ WebServer.prototype.server = false;
  */
 WebServer.prototype.RequestHandler = function(request, response) {
   var self = this;
-
+  try{
+    request.url = decodeURI(request.url);
+  }catch(e) {
+    self.debug.log('decodeURIfailed: %s: %s', request.url);
+  }
   self.debug.log('Request: %s: %s', request.method, request.url);
   var _buffer = '';
   var data = '';
