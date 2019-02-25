@@ -51,14 +51,31 @@ WebServer.prototype.server = false;
  */
 WebServer.prototype.RequestHandler = function(request, response) {
   var self = this;
-  try{
+  try {
     request.url = decodeURI(request.url);
-  }catch(e) {
+  } catch (e) {
     self.debug.log('decodeURIfailed: %s: %s', request.url);
   }
   self.debug.log('Request: %s: %s', request.method, request.url);
   var _buffer = '';
   var data = '';
+
+  let getRemoteAddress = function() {
+    let ipAddress;
+    // The request may be forwarded from local web server.
+    let forwardedIpsStr = request.headers['x-forwarded-for']; 
+    if (forwardedIpsStr) {
+      // 'x-forwarded-for' header may return multiple IP addresses in
+      // the format: "client IP, proxy 1 IP, proxy 2 IP" so take the
+      // the first one
+      let forwardedIps = forwardedIpsStr.split(',');
+      ipAddress = forwardedIps[0];
+    }
+    if (!ipAddress) {
+      ipAddress = request.connection.remoteAddress;
+    }
+    return ipAddress;
+  }
 
 
   request.addListener('data', function(chunk) { _buffer += chunk; });
@@ -68,6 +85,7 @@ WebServer.prototype.RequestHandler = function(request, response) {
     requestDetails.headers = request.headers;
     requestDetails._buffer = _buffer;
     requestDetails.method = request.method;
+    requestDetails.remoteAddress = getRemoteAddress()
 
     if (_buffer != '') {
       self.debug.debug('Data: %s', _buffer);
@@ -77,7 +95,7 @@ WebServer.prototype.RequestHandler = function(request, response) {
         if (self.data.callbacks['responseHandler']) {
           return self.data.callbacks['responseHandler'](e, null, response, requestDetails);
         }
-        response.writeHead(500, { 'content-type': 'application/json' });
+        response.writeHead(503, { 'content-type': 'application/json' });
         response.write(JSON.stringify({ error: e.message }, null, 2));
         response.end('\n');
         self.debug.debug('Error catched:\n %s', e.stack);
@@ -185,7 +203,7 @@ WebServer.prototype.callbackExecutor = function(err, handlerResponse, response, 
     response.writeHead(503, { 'content-type': 'application/json' });
     response.write(JSON.stringify({message: err.message }, null, 2));
     response.end('\n');
-  }else {
+  } else {
     self.debug.debug('Handler responce:\n %O', handlerResponse);
     if (handlerResponse.headers) {
       if (!handlerResponse.headers['content-type']) {
@@ -198,7 +216,7 @@ WebServer.prototype.callbackExecutor = function(err, handlerResponse, response, 
     if (typeof handlerResponse.answer == 'string') {
       response.write(handlerResponse.answer);
     } else {
-      response.write(JSON.stringify(handlerResponse.answer , null, 2));
+      response.write(JSON.stringify(handlerResponse.answer, null, 2));
     }
     response.end('\n');
   }

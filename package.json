@@ -1,11 +1,11 @@
 {
   "name": "@microservice-framework/microservice-cluster",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Microservice cluster library.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "jscs": "jscs --fix index.js includes/*.js"
+    "cs": "eslint --fix index.js includes/*.js"
   },
   "repository": {
     "type": "git",
