@@ -118,6 +118,7 @@ function Cluster(data) {
 
 Cluster.prototype.debug = {
   log: debugF('cluster:main'),
+  debug: debugF('cluster:debug'),
   worker: debugF('cluster:worker')
 };
 
