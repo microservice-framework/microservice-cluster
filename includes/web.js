@@ -89,17 +89,21 @@ WebServer.prototype.RequestHandler = function(request, response) {
 
     if (_buffer != '') {
       self.debug.debug('Data: %s', _buffer);
-      try {
-        data = JSON.parse(_buffer);
-      } catch (e) {
-        if (self.data.callbacks['responseHandler']) {
-          return self.data.callbacks['responseHandler'](e, null, response, requestDetails);
+      if(!self.data.binary) {
+        try {
+          data = JSON.parse(_buffer);
+        } catch (e) {
+          if (self.data.callbacks['responseHandler']) {
+            return self.data.callbacks['responseHandler'](e, null, response, requestDetails);
+          }
+          response.writeHead(503, { 'content-type': 'application/json' });
+          response.write(JSON.stringify({ error: e.message }, null, 2));
+          response.end('\n');
+          self.debug.debug('Error catched:\n %s', e.stack);
+          return;
         }
-        response.writeHead(503, { 'content-type': 'application/json' });
-        response.write(JSON.stringify({ error: e.message }, null, 2));
-        response.end('\n');
-        self.debug.debug('Error catched:\n %s', e.stack);
-        return;
+      } else {
+        data = _buffer
       }
     } else {
       data = {};
