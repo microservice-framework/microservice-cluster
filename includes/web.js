@@ -39,12 +39,38 @@ function WebServer(data) {
   self.server.on('listening', function() {
     self.debug.log('Listen on :%s', self.server.address().port);
   });
+  process.on('message', function(message) {
+    self.processIPMMessage(message);
+  });
 }
 
 // Processed by tokens data structure
 WebServer.prototype.data = {};
 
 WebServer.prototype.server = false;
+
+/**
+ * Process http request and collect POSt and PUT data.
+ */
+WebServer.prototype.processIPMMessage = function(message) {
+  var self = this;
+  self.debug.debug('IPM Message received: %s', message.toString());
+  try {
+    message = JSON.parse(message);
+  } catch (e) {
+    return self.debug.debug('JSON parse failed: %s', message.toString());
+  }
+  let method = 'IPM'
+  try {
+    if (self.data.callbacks[method]) {
+      self.data.callbacks[method](message);
+    } else {
+      throw new Error(method + ' is not supported.');
+    }
+  } catch (e) {
+    self.debug.debug('Error intersepted:\n %s', e.stack);
+  }
+}
 
 /**
  * Process http request and collect POSt and PUT data.

@@ -92,6 +92,13 @@ function Cluster(data) {
       }
       process.exit();
     });
+
+    cluster.on('message', function(worker, message) {
+      self.debug.debug('Broadcast message to workers %s.', message.toString());
+      for (var key in cluster.workers) {
+        cluster.workers[key].send(message);
+      }
+    })
   } else {
     var webServer = new WebHttp(self.data);
 
