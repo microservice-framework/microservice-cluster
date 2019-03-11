@@ -52,12 +52,13 @@ const debugF = require('debug');
 function Cluster(data) {
   var self = this;
   self.data = data;
+  let singletonProcess = false;
+  if (self.data.callbacks['singleton']) {
+    singletonProcess = true
+  }  
 
   if (cluster.isMaster) {
-    let registerProcess = false;
-    if(self.data.register === true) {
-      registerProcess = true
-    }  
+    
     if (data.pid) {
       fs.writeFileSync(data.pid, process.pid);
     }
@@ -70,9 +71,9 @@ function Cluster(data) {
 
     self.debug.log('Starting up %s workers.', numCPUs);
     for (var i = 0; i < numCPUs; i++) {
-      if(registerProcess === true) {
-        let worker = cluster.fork({'IS_REGISTER': true});
-        registerProcess = worker.id;
+      if (singletonProcess === true) {
+        let worker = cluster.fork({'IS_SINGLETON': true});
+        singletonProcess = worker.id;
         continue;
       } 
       cluster.fork();
@@ -85,17 +86,20 @@ function Cluster(data) {
     cluster.on('exit', function(worker, code, signal) {
       self.debug.log('Worker %s died. code %s signal %s', worker.process.pid, code, signal);
       self.debug.log('Starting a new worker');
-      if(registerProcess === worker.id) {
+      if (singletonProcess === worker.id) {
         let worker = cluster.fork({'IS_REGISTER': true});
-        registerProcess = worker.id;
+        singletonProcess = worker.id;
         return
       }
       cluster.fork();
     });
 
     cluster.on('listening', function(worker, address) {
-      if (self.data.callbacks['init']) {
-        self.data.callbacks['init'](cluster, worker, address);
+      // backward compatibility 1.x.
+      if (!singletonProcess) {
+        if (self.data.callbacks['init']) {
+          self.data.callbacks['init'](cluster, worker, address);
+        }
       }
     });
 
@@ -116,16 +120,37 @@ function Cluster(data) {
   } else {
     var webServer = new WebHttp(self.data);
 
+    if (process.env.IS_SINGLETON) {
+      if (self.data.callbacks['singleton']) {
+        self.data.callbacks['singleton'](true);
+      }
+    }
+    if (singletonProcess) {
+      if (self.data.callbacks['init']) {
+        self.data.callbacks['init']();
+      }
+    }
+
+
     process.on('SIGINT', function() {
       self.debug.worker('Caught interrupt signal');
       webServer.stop();
+      if (process.env.IS_SINGLETON) {
+        if (self.data.callbacks['singleton']) {
+          self.data.callbacks['singleton'](false);
+        }
+      }
     });
 
     process.on('SIGTERM', function() {
-        self.debug.worker('Caught termination signal');
-        webServer.stop();
+      self.debug.worker('Caught termination signal');
+      webServer.stop();
+      if (process.env.IS_SINGLETON) {
+        if (self.data.callbacks['singleton']) {
+          self.data.callbacks['singleton'](false);
+        }
       }
-    );
+    });
   }
   return cluster;
 }
