@@ -248,8 +248,8 @@ WebServer.prototype.RequestProcess = function(method, response, requestDetails, 
  */
 WebServer.prototype.callbackExecutor = function(err, handlerResponse, response, requestDetails) {
   var self = this;
-  if(!response.connection) {
-    if(err) {
+  if (!response.connection) {
+    if (err) {
       self.debug.log('Writing after socket is closed err: %O', err)  
     }
     self.debug.log('Writing after socket is closed handlerResponse: %O', handlerResponse)
