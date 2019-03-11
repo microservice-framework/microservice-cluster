@@ -102,7 +102,7 @@ WebServer.prototype.RequestHandler = function(request, response) {
       self.debug.debug('Data: %s', _buffer);
       
       try {
-        decodedData = self.decodeData(request.headers['content-type'])
+        decodedData = self.decodeData(request.headers['content-type'], _buffer)
       } catch (e) {
         if (self.data.callbacks['responseHandler']) {
           return self.data.callbacks['responseHandler'](e, null, response, requestDetails);
