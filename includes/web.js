@@ -88,24 +88,6 @@ WebServer.prototype.RequestHandler = function(request, response) {
   self.debug.log('Request: %s: %s', request.method, request.url);
   var _buffer = '';
 
-  let getRemoteAddress = function() {
-    let ipAddress;
-    // The request may be forwarded from local web server.
-    let forwardedIpsStr = request.headers['x-forwarded-for']; 
-    if (forwardedIpsStr) {
-      // 'x-forwarded-for' header may return multiple IP addresses in
-      // the format: "client IP, proxy 1 IP, proxy 2 IP" so take the
-      // the first one
-      let forwardedIps = forwardedIpsStr.split(',');
-      ipAddress = forwardedIps[0];
-    }
-    if (!ipAddress) {
-      ipAddress = request.connection.remoteAddress;
-    }
-    return ipAddress;
-  }
-
-
   request.addListener('data', function(chunk) { _buffer += chunk; });
   request.addListener('end', function() {
     var requestDetails = {};
@@ -113,7 +95,7 @@ WebServer.prototype.RequestHandler = function(request, response) {
     requestDetails.headers = request.headers;
     requestDetails._buffer = _buffer;
     requestDetails.method = request.method;
-    requestDetails.remoteAddress = getRemoteAddress()
+    requestDetails.remoteAddress = request.connection.remoteAddress
     let decodedData = false;
 
     if (_buffer != '') {
