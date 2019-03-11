@@ -114,7 +114,7 @@ WebServer.prototype.RequestHandler = function(request, response) {
         return;
       }
     } else {
-      decodedData = {};
+      decodedData = requestDetails.url;
     }
     if (self.data.callbacks.loader) {
       self.data.callbacks.loader(request.method, _buffer, requestDetails, function(err) {
