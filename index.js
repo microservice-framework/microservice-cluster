@@ -54,6 +54,10 @@ function Cluster(data) {
   self.data = data;
 
   if (cluster.isMaster) {
+    let registerProcess = false;
+    if(self.data.register === true) {
+      registerProcess = true
+    }  
     if (data.pid) {
       fs.writeFileSync(data.pid, process.pid);
     }
@@ -66,6 +70,11 @@ function Cluster(data) {
 
     self.debug.log('Starting up %s workers.', numCPUs);
     for (var i = 0; i < numCPUs; i++) {
+      if(registerProcess === true) {
+        let worker = cluster.fork({'IS_REGISTER': true});
+        registerProcess = worker.id;
+        continue;
+      } 
       cluster.fork();
     }
 
@@ -76,6 +85,11 @@ function Cluster(data) {
     cluster.on('exit', function(worker, code, signal) {
       self.debug.log('Worker %s died. code %s signal %s', worker.process.pid, code, signal);
       self.debug.log('Starting a new worker');
+      if(registerProcess === worker.id) {
+        let worker = cluster.fork({'IS_REGISTER': true});
+        registerProcess = worker.id;
+        return
+      }
       cluster.fork();
     });
 
