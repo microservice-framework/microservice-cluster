@@ -158,7 +158,7 @@ WebServer.prototype.RequestHandler = function(request, response) {
 };
 
 /**
- * Process request and if implemented, call handlers.
+ * decode buffer to specidied by content-type format.
  */
 WebServer.prototype.decodeData = function(contentType, buffer){
   let data = false
@@ -174,6 +174,30 @@ WebServer.prototype.decodeData = function(contentType, buffer){
     }
   }
   return data
+}
+
+/**
+ * Encode answer property if nesessary.
+ */
+WebServer.prototype.encodeHandlerResponseAnswer = function(handlerResponse){
+  if (!handlerResponse.headers) {
+    handlerResponse.headers = {};
+  }
+
+  if (!handlerResponse.headers['content-type']) {
+    if (typeof handlerResponse.answer == 'string') {
+      handlerResponse.headers['content-type'] = 'text/plain';
+    } else {
+      handlerResponse.headers['content-type'] = 'application/json';
+    }
+  }
+
+  switch (handlerResponse.headers['content-type']) {
+    case 'application/json': {
+      handlerResponse.answer = JSON.stringify(handlerResponse.answer, null, 2)
+      break;
+    }
+  }
 }
 
 /**
@@ -257,19 +281,10 @@ WebServer.prototype.callbackExecutor = function(err, handlerResponse, response, 
     response.end('\n');
   } else {
     self.debug.debug('Handler responce:\n %O', handlerResponse);
-    if (handlerResponse.headers) {
-      if (!handlerResponse.headers['content-type']) {
-        handlerResponse.headers['content-type'] = 'application/json';
-      }
-    } else {
-      handlerResponse.headers = { 'content-type': 'application/json' };
-    }
+    self.encodeHandlerResponseAnswer(handlerResponse)
+    
     response.writeHead(handlerResponse.code, handlerResponse.headers);
-    if (typeof handlerResponse.answer == 'string') {
-      response.write(handlerResponse.answer);
-    } else {
-      response.write(JSON.stringify(handlerResponse.answer, null, 2));
-    }
+    response.write(handlerResponse.answer);
     response.end('\n');
   }
 }
