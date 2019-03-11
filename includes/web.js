@@ -87,7 +87,6 @@ WebServer.prototype.RequestHandler = function(request, response) {
   }
   self.debug.log('Request: %s: %s', request.method, request.url);
   var _buffer = '';
-  var data = '';
 
   let getRemoteAddress = function() {
     let ipAddress;
@@ -115,27 +114,25 @@ WebServer.prototype.RequestHandler = function(request, response) {
     requestDetails._buffer = _buffer;
     requestDetails.method = request.method;
     requestDetails.remoteAddress = getRemoteAddress()
+    let decodedData = false;
 
     if (_buffer != '') {
       self.debug.debug('Data: %s', _buffer);
-      if(!self.data.binary) {
-        try {
-          data = JSON.parse(_buffer);
-        } catch (e) {
-          if (self.data.callbacks['responseHandler']) {
-            return self.data.callbacks['responseHandler'](e, null, response, requestDetails);
-          }
-          response.writeHead(503, { 'content-type': 'application/json' });
-          response.write(JSON.stringify({ error: e.message }, null, 2));
-          response.end('\n');
-          self.debug.debug('Error catched:\n %s', e.stack);
-          return;
+      
+      try {
+        decodedData = self.decodeData(request.headers['content-type'])
+      } catch (e) {
+        if (self.data.callbacks['responseHandler']) {
+          return self.data.callbacks['responseHandler'](e, null, response, requestDetails);
         }
-      } else {
-        data = _buffer
+        response.writeHead(503, { 'content-type': 'application/json' });
+        response.write(JSON.stringify({ error: e.message }, null, 2));
+        response.end('\n');
+        self.debug.debug('Error catched:\n %s', e.stack);
+        return;
       }
     } else {
-      data = {};
+      decodedData = {};
     }
     if (self.data.callbacks.loader) {
       self.data.callbacks.loader(request.method, _buffer, requestDetails, function(err) {
@@ -150,15 +147,34 @@ WebServer.prototype.RequestHandler = function(request, response) {
           response.write(JSON.stringify({ message: err.message }, null, 2));
           response.end('\n');
           self.debug.debug('Validation error: %s', err.message);
-          return;
+          return
         }
-        return self.RequestValidate(request, response, _buffer, requestDetails, data);
-      });
-      return;
+        return self.RequestValidate(request, response, _buffer, requestDetails, decodedData)
+      })
+      return
     }
-    return self.RequestValidate(request, response, _buffer, requestDetails, data);
+    return self.RequestValidate(request, response, _buffer, requestDetails, decodedData)
   });
 };
+
+/**
+ * Process request and if implemented, call handlers.
+ */
+WebServer.prototype.decodeData = function(contentType, buffer){
+  let data = false
+  switch (contentType) {
+    case undefined: // version 1.x compatibility. If no content-type provided, assume json.
+    case 'application/json': {
+      data = JSON.parse(buffer);
+      break;
+    }
+    // Todo support more decoders here?
+    default: {
+      data = buffer
+    }
+  }
+  return data
+}
 
 /**
  * Process request and if implemented, call handlers.
