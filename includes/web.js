@@ -39,6 +39,9 @@ function WebServer(data) {
   self.server.on('listening', function() {
     self.debug.log('Listen on :%s', self.server.address().port);
   });
+  self.server.on('clientError', function(err, socket) {
+    socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+  });
   process.on('message', function(message) {
     self.processIPMMessage(message);
   });
