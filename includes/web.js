@@ -246,10 +246,13 @@ WebServer.prototype.callbackExecutor = function(err, handlerResponse, response, 
   if (self.data.callbacks['responseHandler']) {
     return self.data.callbacks['responseHandler'](err, handlerResponse, response, requestDetails);
   }
-
+  
   if (err) {
+    if (!err.code) {
+      err.code = 503
+    }
     self.debug.debug('Handler responce error:\n %O', err);
-    response.writeHead(503, { 'content-type': 'application/json' });
+    response.writeHead(err.code, { 'content-type': 'application/json' });
     response.write(JSON.stringify({message: err.message }, null, 2));
     response.end('\n');
   } else {
