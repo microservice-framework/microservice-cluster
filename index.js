@@ -57,6 +57,8 @@ function Cluster(data) {
     singletonProcess = true
   }
 
+  let isShutdown = false
+
   let isLegacyInit = false;
   if (self.data.callbacks['init']) {
     if(self.data.callbacks['init'].length == 3) {
@@ -92,6 +94,9 @@ function Cluster(data) {
 
     cluster.on('exit', function(worker, code, signal) {
       self.debug.log('Worker %s died. code %s signal %s', worker.process.pid, code, signal);
+      if(isShutdown) {
+        return
+      }
       self.debug.log('Starting a new worker');
       if (singletonProcess === worker.id) {
         let worker = cluster.fork({'IS_SINGLETON': true});
@@ -109,6 +114,7 @@ function Cluster(data) {
     });
 
     process.on('SIGINT', function() {
+      isShutdown = true
       self.debug.log('Caught interrupt signal');
       if (data.pid) {
         if(fs.existsSync(data.pid)) {
@@ -126,7 +132,7 @@ function Cluster(data) {
     })
   } else {
     var webServer = new WebHttp(self.data);
-
+    
     if (process.env.IS_SINGLETON) {
       if (self.data.callbacks['singleton']) {
         self.debug.log('Starting singleton');
@@ -137,7 +143,7 @@ function Cluster(data) {
     } else {
       // No starting init in singleton
       // If it's is not legacy init, start it in every child
-      if (!isLegacyInit) {
+      if (!isLegacyInit && self.data.callbacks['init']) {
         self.data.callbacks['init'](cluster);
       }
     }
@@ -161,7 +167,9 @@ function Cluster(data) {
     });
 
     let shutdownFunction = function(){
-      webServer.stop();
+      self.debug.worker('shutdownFunction');
+      webServer.stop()
+      cluster.worker.disconnect();
       // call singleton on stop if it is singleton process
       if (process.env.IS_SINGLETON) {
         if (self.data.callbacks['singleton']) {
@@ -177,6 +185,7 @@ function Cluster(data) {
     let multipleInt = false
     process.on('SIGINT', function() {
       self.debug.worker('Caught interrupt signal');
+
       shutdownFunction()
       if(multipleInt) {
         // force termination on multiple SIGINT
