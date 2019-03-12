@@ -112,6 +112,7 @@ function Cluster(data) {
     });
 
     cluster.on('message', function(worker, message) {
+      // Broadcast message from worker to all workers as IPM handler
       self.debug.debug('Broadcast message to workers %s.', message.toString());
       for (var key in cluster.workers) {
         cluster.workers[key].send(message);
@@ -122,15 +123,35 @@ function Cluster(data) {
 
     if (process.env.IS_SINGLETON) {
       if (self.data.callbacks['singleton']) {
-        self.data.callbacks['singleton'](true);
+        self.debug.log('Starting singleton');
+        self.data.callbacks['singleton'](true, cluster);
+      } else {
+        self.debug.log('No singleton defined');
       }
     }
     if (singletonProcess) {
       if (self.data.callbacks['init']) {
-        self.data.callbacks['init']();
+        self.data.callbacks['init'](cluster);
       }
     }
 
+    process.on('message', function(message) {
+      self.debug.debug('IPM Message received: %s', message.toString());
+      let method = 'IPM'
+      try {
+        if (self.data.callbacks[method]) {
+          if(message.type && message.message) {
+            self.data.callbacks[method](message.type, message.message);
+          } else {
+            self.data.callbacks[method](message);
+          }
+        } else {
+          throw new Error(method + ' is not supported.');
+        }
+      } catch (e) {
+        self.debug.debug('Error intersepted:\n %s', e.stack);
+      }
+    });
 
     process.on('SIGINT', function() {
       self.debug.worker('Caught interrupt signal');
@@ -153,6 +174,17 @@ function Cluster(data) {
     });
   }
   return cluster;
+}
+
+/**
+ * Send message by worker.
+ */
+Cluster.prototype.message = function(type, message) {
+  let send = {
+    type: type,
+    message: message
+  }
+  process.send(send);
 }
 
 Cluster.prototype.debug = {
