@@ -82,7 +82,7 @@ WebServer.prototype.RequestHandler = function(request, response) {
         if (self.data.callbacks['responseHandler']) {
           return self.data.callbacks['responseHandler'](e, null, response, requestDetails);
         }
-        response.writeHead(503, { 'content-type': 'application/json' });
+        response.writeHead(503, self.validateHeaders({}));
         response.write(JSON.stringify({ error: e.message }, null, 2));
         response.end('\n');
         self.debug.debug('Error catched:\n %s', e.stack);
@@ -100,7 +100,7 @@ WebServer.prototype.RequestHandler = function(request, response) {
           if (self.data.callbacks['responseHandler']) {
             return self.data.callbacks['responseHandler'](err, null, response, requestDetails);
           }
-          response.writeHead(err.code, { 'content-type': 'application/json' });
+          response.writeHead(err.code, self.validateHeaders({}));
           response.write(JSON.stringify({ message: err.message }, null, 2));
           response.end('\n');
           self.debug.debug('Validation error: %s', err.message);
@@ -131,6 +131,24 @@ WebServer.prototype.decodeData = function(contentType, buffer){
     }
   }
   return data
+}
+
+/**
+ * Encode answer property if nesessary.
+ */
+WebServer.prototype.validateHeaders = function(headers){
+  if (!headers) {
+    headers = {}
+  }
+  for (let i in headers) {
+    if (headers[i] == undefined) {
+      delete headers[i]
+    }
+  }
+  if (!headers['content-type']) {
+    headers['content-type'] = 'application/json'
+  }
+  return headers
 }
 
 /**
@@ -171,7 +189,7 @@ WebServer.prototype.RequestValidate = function(request, response, _buffer, reque
         if (self.data.callbacks['responseHandler']) {
           return self.data.callbacks['responseHandler'](err, null, response, requestDetails);
         }
-        response.writeHead(err.code, { 'content-type': 'application/json' });
+        response.writeHead(err.code, self.validateHeaders({}));
         response.write(JSON.stringify({ message: err.message }, null, 2));
         response.end('\n');
         self.debug.debug('Validation error: %s', err.message);
@@ -212,7 +230,7 @@ WebServer.prototype.RequestProcess = function(method, response, requestDetails, 
     if (self.data.callbacks['responseHandler']) {
       return self.data.callbacks['responseHandler'](e, null, response, requestDetails);
     }
-    response.writeHead(e.code, { 'content-type': 'application/json' });
+    response.writeHead(e.code, self.validateHeaders({}));
     response.write(JSON.stringify({ error: e.message }, null, 2));
     response.end('\n');
   }
@@ -241,14 +259,14 @@ WebServer.prototype.callbackExecutor = function(err, handlerResponse, response, 
       err.code = 503
     }
     self.debug.debug('Handler responce error:\n %O', err);
-    response.writeHead(err.code, { 'content-type': 'application/json' });
+    response.writeHead(err.code, self.validateHeaders({}));
     response.write(JSON.stringify({message: err.message }, null, 2));
     response.end('\n');
   } else {
     self.debug.debug('Handler responce:\n %O', handlerResponse);
     self.encodeHandlerResponseAnswer(handlerResponse)
     
-    response.writeHead(handlerResponse.code, handlerResponse.headers);
+    response.writeHead(handlerResponse.code, self.validateHeaders(handlerResponse.headers));
     response.write(handlerResponse.answer);
     response.end('\n');
   }

@@ -61,7 +61,7 @@ function Cluster(data) {
 
   let isLegacyInit = false;
   if (self.data.callbacks['init']) {
-    if(self.data.callbacks['init'].length == 3) {
+    if (self.data.callbacks['init'].length == 3) {
       isLegacyInit = true
     }
   }
@@ -94,7 +94,7 @@ function Cluster(data) {
 
     cluster.on('exit', function(worker, code, signal) {
       self.debug.log('Worker %s died. code %s signal %s', worker.process.pid, code, signal);
-      if(isShutdown) {
+      if (isShutdown) {
         return
       }
       self.debug.log('Starting a new worker');
@@ -117,11 +117,11 @@ function Cluster(data) {
       isShutdown = true
       self.debug.log('Caught interrupt signal');
       if (data.pid) {
-        if(fs.existsSync(data.pid)) {
+        if (fs.existsSync(data.pid)) {
           fs.unlinkSync(data.pid);
         }
       }
-      if(multipleInt) {
+      if (multipleInt) {
         // force termination on multiple SIGINT
         process.exit(0)
       }
@@ -158,7 +158,7 @@ function Cluster(data) {
       let method = 'IPM'
       try {
         if (self.data.callbacks[method]) {
-          if(message.type && message.message) {
+          if (message.type && message.message) {
             self.data.callbacks[method](message.type, message.message);
           } else {
             self.data.callbacks[method](message);
@@ -195,7 +195,7 @@ function Cluster(data) {
       self.debug.worker('Caught interrupt signal');
 
       shutdownFunction()
-      if(multipleInt) {
+      if (multipleInt) {
         // force termination on multiple SIGINT
         process.exit(0)
       }
@@ -207,7 +207,7 @@ function Cluster(data) {
       shutdownFunction()
       // On terminate we force termination in 15 sec.
       let termIn = 15000
-      if(process.env.TERMINATE_IN && parseInt(process.env.TERMINATE_IN) > 0) {
+      if (process.env.TERMINATE_IN && parseInt(process.env.TERMINATE_IN) > 0) {
         termIn = parseInt(process.env.TERMINATE_IN)
       }
       setTimeout(function(){
