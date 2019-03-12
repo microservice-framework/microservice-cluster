@@ -174,6 +174,7 @@ function Cluster(data) {
     let shutdownFunction = function(){
       self.debug.worker('shutdownFunction');
       webServer.stop(function(){
+        self.debug.worker('disconnect worker');
         cluster.worker.disconnect();
       })
       
