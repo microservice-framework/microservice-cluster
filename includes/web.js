@@ -257,10 +257,11 @@ WebServer.prototype.callbackExecutor = function(err, handlerResponse, response, 
 /**
  * Process server stop request.
  */
-WebServer.prototype.stop = function() {
+WebServer.prototype.stop = function(callback) {
   var self = this;
   self.server.close(function() {
     self.debug.log('Worker stopped');
+    callback()
   });
 };
 

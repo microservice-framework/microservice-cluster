@@ -112,7 +112,7 @@ function Cluster(data) {
         self.data.callbacks['init'](cluster, worker, address);
       }
     });
-
+    let multipleInt = false
     process.on('SIGINT', function() {
       isShutdown = true
       self.debug.log('Caught interrupt signal');
@@ -121,6 +121,11 @@ function Cluster(data) {
           fs.unlinkSync(data.pid);
         }
       }
+      if(multipleInt) {
+        // force termination on multiple SIGINT
+        process.exit(0)
+      }
+      multipleInt = true
     });
 
     cluster.on('message', function(worker, message) {
@@ -168,8 +173,10 @@ function Cluster(data) {
 
     let shutdownFunction = function(){
       self.debug.worker('shutdownFunction');
-      webServer.stop()
-      cluster.worker.disconnect();
+      webServer.stop(function(){
+        cluster.worker.disconnect();
+      })
+      
       // call singleton on stop if it is singleton process
       if (process.env.IS_SINGLETON) {
         if (self.data.callbacks['singleton']) {
