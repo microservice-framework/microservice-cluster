@@ -55,7 +55,14 @@ function Cluster(data) {
   let singletonProcess = false;
   if (self.data.callbacks['singleton']) {
     singletonProcess = true
-  }  
+  }
+
+  let isLegacyInit = false;
+  if (self.data.callbacks['init']) {
+    if(self.data.callbacks['init'].length == 3) {
+      isLegacyInit = true
+    }
+  }
 
   if (cluster.isMaster) {
     
@@ -87,7 +94,7 @@ function Cluster(data) {
       self.debug.log('Worker %s died. code %s signal %s', worker.process.pid, code, signal);
       self.debug.log('Starting a new worker');
       if (singletonProcess === worker.id) {
-        let worker = cluster.fork({'IS_REGISTER': true});
+        let worker = cluster.fork({'IS_SINGLETON': true});
         singletonProcess = worker.id;
         return
       }
@@ -96,19 +103,18 @@ function Cluster(data) {
 
     cluster.on('listening', function(worker, address) {
       // backward compatibility 1.x.
-      if (!singletonProcess) {
-        if (self.data.callbacks['init']) {
-          self.data.callbacks['init'](cluster, worker, address);
-        }
+      if (isLegacyInit) {
+        self.data.callbacks['init'](cluster, worker, address);
       }
     });
 
     process.on('SIGINT', function() {
       self.debug.log('Caught interrupt signal');
       if (data.pid) {
-        fs.unlinkSync(data.pid);
+        if(fs.existsSync(data.pid)) {
+          fs.unlinkSync(data.pid);
+        }
       }
-      process.exit();
     });
 
     cluster.on('message', function(worker, message) {
@@ -128,9 +134,10 @@ function Cluster(data) {
       } else {
         self.debug.log('No singleton defined');
       }
-    }
-    if (singletonProcess) {
-      if (self.data.callbacks['init']) {
+    } else {
+      // No starting init in singleton
+      // If it's is not legacy init, start it in every child
+      if (!isLegacyInit) {
         self.data.callbacks['init'](cluster);
       }
     }
@@ -153,38 +160,52 @@ function Cluster(data) {
       }
     });
 
-    process.on('SIGINT', function() {
-      self.debug.worker('Caught interrupt signal');
+    let shutdownFunction = function(){
       webServer.stop();
+      // call singleton on stop if it is singleton process
       if (process.env.IS_SINGLETON) {
         if (self.data.callbacks['singleton']) {
           self.data.callbacks['singleton'](false);
         }
+      } else {
+        if (self.data.callbacks['shutdown']) {
+          self.data.callbacks['shutdown']();
+        }
       }
+    }
+    
+    let multipleInt = false
+    process.on('SIGINT', function() {
+      self.debug.worker('Caught interrupt signal');
+      shutdownFunction()
+      if(multipleInt) {
+        // force termination on multiple SIGINT
+        process.exit(0)
+      }
+      multipleInt = true
     });
 
     process.on('SIGTERM', function() {
       self.debug.worker('Caught termination signal');
-      webServer.stop();
-      if (process.env.IS_SINGLETON) {
-        if (self.data.callbacks['singleton']) {
-          self.data.callbacks['singleton'](false);
-        }
+      shutdownFunction()
+      // On terminate we force termination in 15 sec.
+      let termIn = 15000
+      if(process.env.TERMINATE_IN && parseInt(process.env.TERMINATE_IN) > 0) {
+        termIn = parseInt(process.env.TERMINATE_IN)
       }
+      setTimeout(function(){
+        process.exit(0)
+      }, termIn)
     });
   }
-  return cluster;
-}
-
-/**
- * Send message by worker.
- */
-Cluster.prototype.message = function(type, message) {
-  let send = {
-    type: type,
-    message: message
+  cluster.message = function(type, message) {
+    let send = {
+      type: type,
+      message: message
+    }
+    process.send(send);
   }
-  process.send(send);
+  return cluster;
 }
 
 Cluster.prototype.debug = {

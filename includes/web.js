@@ -260,9 +260,8 @@ WebServer.prototype.callbackExecutor = function(err, handlerResponse, response, 
 WebServer.prototype.stop = function() {
   var self = this;
   self.server.close(function() {
-      self.debug.log('Worker stopped');
-      process.exit();
-    });
+    self.debug.log('Worker stopped');
+  });
 };
 
 /**
