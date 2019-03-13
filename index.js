@@ -62,7 +62,10 @@ function Cluster(data) {
   let isLegacyInit = false;
   if (self.data.callbacks['init']) {
     if (self.data.callbacks['init'].length == 3) {
+      self.debug.log('legacy init detected');
       isLegacyInit = true
+    } else {
+      self.debug.log('new api init detected');
     }
   }
 
@@ -149,10 +152,14 @@ function Cluster(data) {
   } else {
     var webServer = new WebHttp(self.data);
     
+    var sharedData = {}
+
     if (process.env.IS_SINGLETON) {
       if (self.data.callbacks['singleton']) {
         self.debug.log('Starting singleton');
-        self.data.callbacks['singleton'](true, cluster);
+        self.data.callbacks['singleton'](true, function(variables){
+          sharedData.singleton = variables
+        });
       } else {
         self.debug.log('No singleton defined');
       }
@@ -160,7 +167,10 @@ function Cluster(data) {
       // No starting init in singleton
       // If it's is not legacy init, start it in every child
       if (!isLegacyInit && self.data.callbacks['init']) {
-        self.data.callbacks['init'](cluster);
+        self.debug.log('Starting init');
+        self.data.callbacks['init'](function(variables){
+          sharedData.init = variables
+        });
       }
     }
 
@@ -192,11 +202,11 @@ function Cluster(data) {
       // call singleton on stop if it is singleton process
       if (process.env.IS_SINGLETON) {
         if (self.data.callbacks['singleton']) {
-          self.data.callbacks['singleton'](false);
+          self.data.callbacks['singleton'](false, sharedData.singleton);
         }
       } else {
         if (self.data.callbacks['shutdown']) {
-          self.data.callbacks['shutdown']();
+          self.data.callbacks['shutdown'](sharedData.init);
         }
       }
     }
