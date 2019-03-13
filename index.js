@@ -113,7 +113,8 @@ function Cluster(data) {
       }
     });
     let multipleInt = false
-    process.on('SIGINT', function() {
+
+    let stopCluster = function(signal) {
       isShutdown = true
       self.debug.log('Caught interrupt signal');
       if (data.pid) {
@@ -125,7 +126,17 @@ function Cluster(data) {
         // force termination on multiple SIGINT
         process.exit(0)
       }
+      // send signal to all workers
+      for (const id in cluster.workers) {
+        process.kill(cluster.workers[id].process.pid, signal)
+      }
       multipleInt = true
+    }
+    process.on('SIGINT', function() {
+      stopCluster('SIGINT');
+    });
+    process.on('SIGTERM', function() {
+      stopCluster('SIGTERM');
     });
 
     cluster.on('message', function(worker, message) {
@@ -193,12 +204,11 @@ function Cluster(data) {
     let multipleInt = false
     process.on('SIGINT', function() {
       self.debug.worker('Caught interrupt signal');
-
-      shutdownFunction()
       if (multipleInt) {
         // force termination on multiple SIGINT
         process.exit(0)
       }
+      shutdownFunction()
       multipleInt = true
     });
 
