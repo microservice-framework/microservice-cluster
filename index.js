@@ -72,7 +72,7 @@ function Cluster(data) {
   if (cluster.isMaster) {
     
     if (data.pid) {
-      fs.writeFileSync(data.pid, process.pid);
+      fs.writeFileSync(data.pid + "", process.pid + "");
     }
     let numCPUs = 1;
     if (data.count) {
