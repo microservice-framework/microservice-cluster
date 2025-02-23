@@ -49,42 +49,42 @@ var ms = new Cluster({
     response.end('\n');
   },*/
   methods: {
-    POST: function (data, request, callback) {
+    POST: function (data, request, responce) {
       console.log('post %O %O', data, request);
-      callback(null, {
+      responce(null, {
         code: 200,
         answer: { test: 1, data: data },
         headers: { test: 100 },
       });
     },
-    GET: function (data, request, callback) {
+    GET: function (id, request, responce) {
       console.log('post %O %O', data, request);
-      callback(null, {
+      responce(null, {
         code: 200,
         answer: { test: 1, data: data },
         headers: { test: 100 },
       });
     },
-    PUT: function (data, request, callback) {
+    PUT: function (data, request, responce) {
       console.log('post %O %O', data, request);
-      callback(null, {
+      responce(null, {
         code: 200,
         answer: { test: 1, data: data },
         headers: { test: 100 },
       });
     },
-    DELETE: function (data, request, callback) {
-      //console.log('post %O %O', data, request);
-      return callback(new Error('test'));
-      callback(null, {
+    DELETE: function (id, request, responce) {
+      console.log('post %O %O', id, request);
+      return responce({ message: 'test' });
+      responce(null, {
         code: 200,
         answer: { test: 1, data: data },
         headers: { test: 100 },
       });
     },
-    SEARCH: function (data, request, callback) {
+    SEARCH: function (data, request, responce) {
       console.log('post %O %O', data, request);
-      callback(null, {
+      responce(null, {
         code: 200,
         answer: { test: 1, data: data },
         headers: { test: 100 },

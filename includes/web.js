@@ -172,6 +172,17 @@ WebServer.prototype.RequestProcess = function (method, response, requestDetails,
           this.callbackExecutor(err, handlerResponse, response, requestDetails);
         });
       }
+      if (method == 'PUT') {
+        return this.data.methods[method](requestDetails.url, data, requestDetails, (err, handlerResponse) => {
+          this.callbackExecutor(err, handlerResponse, response, requestDetails);
+        });
+      }
+      // no body elements for GET and DELETE
+      if (['GET', 'DELETE'].includes(method)) {
+        data = requestDetails.url;
+      }
+
+      // POST, SEARCH, PATCH etc
       this.data.methods[method](data, requestDetails, (err, handlerResponse) => {
         this.callbackExecutor(err, handlerResponse, response, requestDetails);
       });
