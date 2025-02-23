@@ -1,11 +1,12 @@
 {
   "name": "@microservice-framework/microservice-cluster",
-  "version": "2.0.1",
-  "description": "Microservice cluster library.",
+  "version": "3.0.0",
+  "description": "Microservice web cluster library.",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "cs": "eslint --fix index.js includes/*.js"
+    "lint": "eslint --fix "
   },
   "repository": {
     "type": "git",
@@ -21,7 +22,14 @@
   },
   "homepage": "https://github.com/microservice-framework/microservice-cluster#readme",
   "dependencies": {
-    "debug": "^2.2.0",
-    "dotenv": "^4.0.0"
+    "debug": "^4.4.0",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "eslint": "^9.21.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-prettier": "^5.2.3",
+    "prettier": "^3.5.2",
+    "vue-eslint-parser": "^9.4.3"
   }
 }

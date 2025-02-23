@@ -4,11 +4,8 @@
  */
 'use strict';
 
-var http = require('http');
-const debugF = require('debug');
-
-const bind = function(fn, me) { return function() { return fn.apply(me, arguments); }; };
-
+import http from 'node:http';
+import debug from 'debug';
 
 /**
  * Constructor.
@@ -16,55 +13,47 @@ const bind = function(fn, me) { return function() { return fn.apply(me, argument
  */
 function WebServer(data) {
   // Use a closure to preserve `this`
-  var self = this;
-  self.data = data;
-
-  this.RequestHandler = bind(this.RequestHandler, this);
-  this.callbackExecutor = bind(this.callbackExecutor, this);
-
-  self.server = http.createServer(self.RequestHandler);
+  this.data = data;
+  this.server = http.createServer((request, response) => { this.RequestHandler(request, response)});
 
   // Use random port if port settings is not provided.
-  if (!self.data.port) {
-    self.data.port = 0;
+  if (!this.data.port) {
+    this.data.port = 0;
+  } else {
+    this.data.port = parseInt(this.data.port);
   }
 
   // Use address if provided.
-  if (self.data.hostname) {
-    self.server.listen(self.data.port, self.data.hostname);
+  if (this.data.hostname) {
+    this.server.listen(this.data.port, this.data.hostname);
   } else {
-    self.server.listen(self.data.port);
+    this.server.listen(this.data.port);
   }
 
-  self.server.on('listening', function() {
-    self.debug.log('Listen on :%s', self.server.address().port);
+  this.server.on('listening', () => {
+    this.debug.log('Listen on :%s', this.server.address().port);
   });
-  self.server.on('clientError', function(err, socket) {
+  this.server.on('clientError', (err, socket) => {
     socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
   });
   
 }
 
-// Processed by tokens data structure
-WebServer.prototype.data = {};
-
-WebServer.prototype.server = false;
-
 /**
  * Process http request and collect POSt and PUT data.
  */
 WebServer.prototype.RequestHandler = function(request, response) {
-  var self = this;
+
   try {
     request.url = decodeURI(request.url);
   } catch (e) {
-    self.debug.log('decodeURIfailed: %s: %s', request.url);
+    this.debug.log('decodeURIfailed: %s: %s', request.url);
   }
-  self.debug.log('Request: %s: %s', request.method, request.url);
+  this.debug.log('Request: %s: %s', request.method, request.url);
   var _buffer = '';
 
-  request.addListener('data', function(chunk) { _buffer += chunk; });
-  request.addListener('end', function() {
+  request.addListener('data', (chunk) => { _buffer += chunk; });
+  request.addListener('end', () =>{
     var requestDetails = {};
     requestDetails.url = request.url.substr(1);
     requestDetails.headers = request.headers;
@@ -74,45 +63,168 @@ WebServer.prototype.RequestHandler = function(request, response) {
     let decodedData = false;
 
     if (_buffer != '') {
-      self.debug.debug('Data: %s', _buffer);
+      this.debug.debug('Data: %s', _buffer);
       
       try {
-        decodedData = self.decodeData(request.headers['content-type'], _buffer)
+        decodedData = this.decodeData(request.headers['content-type'], _buffer)
       } catch (e) {
-        if (self.data.callbacks['responseHandler']) {
-          return self.data.callbacks['responseHandler'](e, null, response, requestDetails);
+        if (this.data.callbacks['responseHandler']) {
+          return this.data.callbacks['responseHandler'](e, null, response, requestDetails);
         }
-        response.writeHead(503, self.validateHeaders({}));
+        response.writeHead(503, () => {
+          return this.validateHeaders({})
+        });
         response.write(JSON.stringify({ error: e.message }, null, 2));
         response.end('\n');
-        self.debug.debug('Error catched:\n %s', e.stack);
+        this.debug.debug('Error catched:\n %s', e.stack);
         return;
       }
     } else {
       decodedData = requestDetails.url;
     }
-    if (self.data.callbacks.loader) {
-      self.data.callbacks.loader(request.method, _buffer, requestDetails, function(err) {
+    if (this.data.callbacks.loader) {
+      this.data.callbacks.loader(request.method, _buffer, requestDetails, function(err) {
         if (err) {
           if (!err.code) {
             err.code = 403;
           }
-          if (self.data.callbacks['responseHandler']) {
-            return self.data.callbacks['responseHandler'](err, null, response, requestDetails);
+          if (this.data.callbacks['responseHandler']) {
+            return this.data.callbacks['responseHandler'](err, null, response, requestDetails);
           }
-          response.writeHead(err.code, self.validateHeaders({}));
+          response.writeHead(err.code, () => {
+            return this.validateHeaders({})
+          });
           response.write(JSON.stringify({ message: err.message }, null, 2));
           response.end('\n');
-          self.debug.debug('Validation error: %s', err.message);
+          this.debug.debug('Validation error: %s', err.message);
           return
         }
-        return self.RequestValidate(request, response, _buffer, requestDetails, decodedData)
+        return this.RequestValidate(request, response, _buffer, requestDetails, decodedData)
       })
       return
     }
-    return self.RequestValidate(request, response, _buffer, requestDetails, decodedData)
+    return this.RequestValidate(request, response, _buffer, requestDetails, decodedData)
   });
-};
+}
+
+
+/**
+ * Encode answer property if nesessary.
+ */
+WebServer.prototype.encodeHandlerResponseAnswer = function(handlerResponse){
+  if (!handlerResponse.headers) {
+    handlerResponse.headers = {};
+  }
+
+  if (!handlerResponse.headers['content-type']) {
+    if (typeof handlerResponse.answer == 'string') {
+      handlerResponse.headers['content-type'] = 'text/plain';
+    } else {
+      handlerResponse.headers['content-type'] = 'application/json';
+    }
+  }
+
+  switch (handlerResponse.headers['content-type']) {
+    case 'application/json': {
+      handlerResponse.answer = JSON.stringify(handlerResponse.answer, null, 2)
+      break;
+    }
+  }
+}
+
+
+/**
+ * Process request and if implemented, call handlers.
+ */
+WebServer.prototype.RequestValidate = function(request, response, _buffer, requestDetails, data) {
+  if (this.data.callbacks.validate) {
+    this.data.callbacks.validate(request.method, _buffer, requestDetails, function(err) {
+      if (err) {
+        if (!err.code) {
+          err.code = 403;
+        }
+        if (this.data.callbacks['responseHandler']) {
+          return this.data.callbacks['responseHandler'](err, null, response, requestDetails);
+        }
+        response.writeHead(err.code, () => {return this.validateHeaders({})});
+        response.write(JSON.stringify({ message: err.message }, null, 2));
+        response.end('\n');
+        this.debug.debug('Validation error: %s', err.message);
+        return;
+      }
+      return this.RequestProcess(request.method, response, requestDetails, data);
+    });
+    return;
+  }
+  return this.RequestProcess(request.method, response, requestDetails, data);
+}
+
+/**
+ * Process request and if implemented, call handlers.
+ */
+WebServer.prototype.RequestProcess = function(method, response, requestDetails, data) {
+  this.debug.debug('Parsed data: %O', data);
+  try {
+    if (this.data.callbacks[method]) {
+      if (method == 'OPTIONS') {
+        return this.data.callbacks[method](data, requestDetails, this.data.callbacks,
+          (err, handlerResponse) =>{
+            this.callbackExecutor(err, handlerResponse, response, requestDetails);
+          });
+      }
+      this.data.callbacks[method](data, requestDetails, (err, handlerResponse) => {
+        this.callbackExecutor(err, handlerResponse, response, requestDetails);
+      });
+    } else {
+      throw new Error(method + ' is not supported.');
+    }
+  } catch (e) {
+    this.debug.debug('Error intersepted:\n %s', e.stack);
+    e.code = 500;
+
+    if (this.data.callbacks['responseHandler']) {
+      return this.data.callbacks['responseHandler'](e, null, response, requestDetails);
+    }
+    response.writeHead(e.code, () =>{ return this.validateHeaders({})});
+    response.write(JSON.stringify({ error: e.message }, null, 2));
+    response.end('\n');
+  }
+}
+
+/**
+ * Output answer from handlers.
+ */
+WebServer.prototype.callbackExecutor = function(err, handlerResponse, response, requestDetails) {
+  if (!response.connection) {
+    if (err) {
+      this.debug.log('Writing after socket is closed err: %O', err)  
+    }
+    this.debug.log('Writing after socket is closed handlerResponse: %O', handlerResponse)
+    this.debug.log('Writing after socket is closed requestDetails: %O', requestDetails)
+    return
+  }
+
+  if (this.data.callbacks['responseHandler']) {
+    return this.data.callbacks['responseHandler'](err, handlerResponse, response, requestDetails);
+  }
+  
+  if (err) {
+    if (!err.code) {
+      err.code = 503
+    }
+    this.debug.debug('Handler responce error:\n %O', err);
+    response.writeHead(err.code, this.validateHeaders({}));
+    response.write(JSON.stringify({message: err.message }, null, 2));
+    response.end('\n');
+  } else {
+    this.debug.debug('Handler responce:\n %O', handlerResponse);
+    this.encodeHandlerResponseAnswer(handlerResponse)
+    
+    response.writeHead(handlerResponse.code, this.validateHeaders(handlerResponse.headers));
+    response.write(handlerResponse.answer);
+    response.end('\n');
+  }
+}
 
 /**
  * decode buffer to specidied by content-type format.
@@ -151,145 +263,25 @@ WebServer.prototype.validateHeaders = function(headers){
   return headers
 }
 
-/**
- * Encode answer property if nesessary.
- */
-WebServer.prototype.encodeHandlerResponseAnswer = function(handlerResponse){
-  if (!handlerResponse.headers) {
-    handlerResponse.headers = {};
-  }
-
-  if (!handlerResponse.headers['content-type']) {
-    if (typeof handlerResponse.answer == 'string') {
-      handlerResponse.headers['content-type'] = 'text/plain';
-    } else {
-      handlerResponse.headers['content-type'] = 'application/json';
-    }
-  }
-
-  switch (handlerResponse.headers['content-type']) {
-    case 'application/json': {
-      handlerResponse.answer = JSON.stringify(handlerResponse.answer, null, 2)
-      break;
-    }
-  }
-}
-
-/**
- * Process request and if implemented, call handlers.
- */
-WebServer.prototype.RequestValidate = function(request, response, _buffer, requestDetails, data) {
-  var self = this;
-  if (self.data.callbacks.validate) {
-    self.data.callbacks.validate(request.method, _buffer, requestDetails, function(err) {
-      if (err) {
-        if (!err.code) {
-          err.code = 403;
-        }
-        if (self.data.callbacks['responseHandler']) {
-          return self.data.callbacks['responseHandler'](err, null, response, requestDetails);
-        }
-        response.writeHead(err.code, self.validateHeaders({}));
-        response.write(JSON.stringify({ message: err.message }, null, 2));
-        response.end('\n');
-        self.debug.debug('Validation error: %s', err.message);
-        return;
-      }
-      return self.RequestProcess(request.method, response, requestDetails, data);
-    });
-    return;
-  }
-  return self.RequestProcess(request.method, response, requestDetails, data);
-}
-
-/**
- * Process request and if implemented, call handlers.
- */
-WebServer.prototype.RequestProcess = function(method, response, requestDetails, data) {
-  var self = this;
-
-  self.debug.debug('Parsed data: %O', data);
-  try {
-    if (self.data.callbacks[method]) {
-      if (method == 'OPTIONS') {
-        return self.data.callbacks[method](data, requestDetails, self.data.callbacks,
-          function(err, handlerResponse) {
-            self.callbackExecutor(err, handlerResponse, response, requestDetails);
-          });
-      }
-      self.data.callbacks[method](data, requestDetails, function(err, handlerResponse) {
-        self.callbackExecutor(err, handlerResponse, response, requestDetails);
-      });
-    } else {
-      throw new Error(method + ' is not supported.');
-    }
-  } catch (e) {
-    self.debug.debug('Error intersepted:\n %s', e.stack);
-    e.code = 500;
-
-    if (self.data.callbacks['responseHandler']) {
-      return self.data.callbacks['responseHandler'](e, null, response, requestDetails);
-    }
-    response.writeHead(e.code, self.validateHeaders({}));
-    response.write(JSON.stringify({ error: e.message }, null, 2));
-    response.end('\n');
-  }
-}
-
-/**
- * Output answer from handlers.
- */
-WebServer.prototype.callbackExecutor = function(err, handlerResponse, response, requestDetails) {
-  var self = this;
-  if (!response.connection) {
-    if (err) {
-      self.debug.log('Writing after socket is closed err: %O', err)  
-    }
-    self.debug.log('Writing after socket is closed handlerResponse: %O', handlerResponse)
-    self.debug.log('Writing after socket is closed requestDetails: %O', requestDetails)
-    return
-  }
-
-  if (self.data.callbacks['responseHandler']) {
-    return self.data.callbacks['responseHandler'](err, handlerResponse, response, requestDetails);
-  }
-  
-  if (err) {
-    if (!err.code) {
-      err.code = 503
-    }
-    self.debug.debug('Handler responce error:\n %O', err);
-    response.writeHead(err.code, self.validateHeaders({}));
-    response.write(JSON.stringify({message: err.message }, null, 2));
-    response.end('\n');
-  } else {
-    self.debug.debug('Handler responce:\n %O', handlerResponse);
-    self.encodeHandlerResponseAnswer(handlerResponse)
-    
-    response.writeHead(handlerResponse.code, self.validateHeaders(handlerResponse.headers));
-    response.write(handlerResponse.answer);
-    response.end('\n');
-  }
-}
 
 /**
  * Process server stop request.
  */
 WebServer.prototype.stop = function(callback) {
-  var self = this;
-  self.server.close(function() {
-    self.debug.log('Worker stopped');
+  this.server.close(() => {
+    this.debug.log('Worker stopped');
     callback()
   });
 };
+
 
 /**
  * Define debug methods.
  */
 WebServer.prototype.debug = {
-  log: debugF('http:log'),
-  request: debugF('http:request'),
-  debug: debugF('http:debug')
+  log: debug('http:log'),
+  request: debug('http:request'),
+  debug: debug('http:debug')
 };
 
-module.exports = WebServer;
+export default WebServer;

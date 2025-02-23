@@ -6,82 +6,52 @@
 
 'use strict';
 
-require('dotenv').config();
-const fs = require('fs');
-const spawn = require('child_process').spawn;
+import fs from 'fs';
+import { spawn } from 'child_process';
+import { cpus } from 'node:os';
+import cluster from 'node:cluster';
+import debug from 'debug';
+import WebHttp from './includes/web.js';
 
-if (!process.env.DEVEL && process.env.LOGFILE && !process.env.BACKGROUND) {
-  var spawnArgvs = [];
-  for (var i in process.argv) {
-    if (i > 0) {
-      spawnArgvs.push(process.argv[i]);
-    }
-  }
-  var env = process.env;
-  env.BACKGROUND = true;
-  spawn(process.argv0, spawnArgvs, {
-    stdio: 'ignore',
-    detached: true,
-    env: env,
-  }).unref();
-  process.exit();
+
+
+// Load environment variables from .env file
+import dotenv from "dotenv"
+dotenv.config()
+
+import { EventEmitter } from 'node:events';
+
+export function Cluster(settings) {
+  this.settings = settings;
+  this.isShutdown = false
+  this.multipleInt = false
+  this.sharedData = {}
+  EventEmitter.call(this); // Call EventEmitter constructor
+  this.init();
 }
 
-if (process.env.DEVEL) {
-  if (process.env.DEVEL_DEBUG) {
-    process.env.DEBUG = process.env.DEVEL_DEBUG;
-  } else {
-    process.env.DEBUG = '*';
-  }
-}
 
-if (process.env.BACKGROUND) {
-  process.env.DEBUG_COLORS = false;
-  var logFile = fs.createWriteStream(process.env.LOGFILE, { flags: 'a' });
-  process.stdout.write = process.stderr.write = logFile.write.bind(logFile);
-}
+// Inherit from EventEmitter
+Object.setPrototypeOf(Cluster.prototype, EventEmitter.prototype);
 
-const cluster = require('cluster');
-const WebHttp = require('./includes/web.js');
-const debugF = require('debug');
-
-/**
- * Constructor.
- *   Prepare data for deploy.
- */
-function Cluster(data) {
-  var self = this;
-  self.data = data;
+Cluster.prototype.init = function() {
   let singletonProcess = false;
-  if (self.data.callbacks['singleton']) {
+  if (this.settings.callbacks['singleton']) {
     singletonProcess = true
   }
-
-  let isShutdown = false
-
-  let isLegacyInit = false;
-  if (self.data.callbacks['init']) {
-    if (self.data.callbacks['init'].length == 3) {
-      self.debug.log('legacy init detected');
-      isLegacyInit = true
-    } else {
-      self.debug.log('new api init detected');
-    }
-  }
-
-  if (cluster.isMaster) {
+  if (cluster.isPrimary) {
     
-    if (data.pid) {
-      fs.writeFileSync(data.pid + "", process.pid + "");
+    if (this.settings.pid) {
+      fs.writeFileSync(this.settings.pid + "", process.pid + "");
     }
     let numCPUs = 1;
-    if (data.count) {
-      numCPUs = data.count;
+    if (this.settings.count) {
+      numCPUs = this.settings.count;
     } else {
-      numCPUs = require('os').cpus().length;
+      numCPUs = cpus().length;
     }
 
-    self.debug.log('Starting up %s workers.', numCPUs);
+    this.debug.log('Starting up %s workers.', numCPUs);
     for (var i = 0; i < numCPUs; i++) {
       if (singletonProcess === true) {
         let worker = cluster.fork({'IS_SINGLETON': true});
@@ -91,16 +61,18 @@ function Cluster(data) {
       cluster.fork();
     }
 
-    cluster.on('online', function(worker) {
-      self.debug.log('Worker %s is online', worker.process.pid);
+    cluster.on('online', (worker) => {
+      this.debug.log('Worker %s is online', worker.process.pid);
+      this.emit('online', worker);
     });
 
-    cluster.on('exit', function(worker, code, signal) {
-      self.debug.log('Worker %s died. code %s signal %s', worker.process.pid, code, signal);
-      if (isShutdown) {
+    cluster.on('exit', (worker, code, signal) => {
+      this.debug.log('Worker %s died. code %s signal %s', worker.process.pid, code, signal);
+      if (this.isShutdown) {
+        this.emit('exit', worker, code, signal)
         return
       }
-      self.debug.log('Starting a new worker');
+      this.debug.log('Starting a new worker');
       if (singletonProcess === worker.id) {
         let worker = cluster.fork({'IS_SINGLETON': true});
         singletonProcess = worker.id;
@@ -109,122 +81,80 @@ function Cluster(data) {
       cluster.fork();
     });
 
-    cluster.on('listening', function(worker, address) {
-      // backward compatibility 1.x.
-      if (isLegacyInit) {
-        self.data.callbacks['init'](cluster, worker, address);
-      }
-    });
-    let multipleInt = false
-
-    let stopCluster = function(signal) {
-      isShutdown = true
-      self.debug.log('Caught interrupt signal');
-      if (data.pid) {
-        if (fs.existsSync(data.pid)) {
-          fs.unlinkSync(data.pid);
-        }
-      }
-      if (multipleInt) {
-        // force termination on multiple SIGINT
-        process.exit(0)
-      }
-      // send signal to all workers
-      for (const id in cluster.workers) {
-        process.kill(cluster.workers[id].process.pid, signal)
-      }
-      multipleInt = true
-    }
-    process.on('SIGINT', function() {
-      stopCluster('SIGINT');
-    });
-    process.on('SIGTERM', function() {
-      stopCluster('SIGTERM');
+    cluster.on('listening', (worker, address) => {
+      this.emit('listening', worker, address);
     });
 
-    cluster.on('message', function(worker, message) {
+
+    process.on('SIGINT', () => {
+      this.stopCluster('SIGINT');
+    });
+
+    process.on('SIGTERM', () => {
+      this.stopCluster('SIGTERM');
+    });
+
+    cluster.on('message', (worker, message) => {
       // Broadcast message from worker to all workers as IPM handler
-      self.debug.debug('Broadcast message to workers %s.', message.toString());
+      this.debug.debug('Broadcast message to workers %s.', message.toString());
       for (var key in cluster.workers) {
         cluster.workers[key].send(message);
       }
     })
   } else {
-    var webServer = new WebHttp(self.data);
+    this.webServer = new WebHttp(this.settings);
     
-    var sharedData = {}
+    
 
     if (process.env.IS_SINGLETON) {
-      if (self.data.callbacks['singleton']) {
-        self.debug.log('Starting singleton');
-        self.data.callbacks['singleton'](true, function(variables){
-          sharedData.singleton = variables
+      if (this.settings.callbacks['singleton']) {
+        this.debug.log('Starting singleton');
+        this.settings.callbacks['singleton'](true, (variables) =>{
+          this.sharedData.singleton = variables
         });
       } else {
-        self.debug.log('No singleton defined');
+        this.debug.log('No singleton defined');
       }
     } else {
-      // No starting init in singleton
-      // If it's is not legacy init, start it in every child
-      if (!isLegacyInit && self.data.callbacks['init']) {
-        self.debug.log('Starting init');
-        self.data.callbacks['init'](function(variables){
-          sharedData.init = variables
+      if (this.settings.callbacks['init']) {
+        this.debug.log('Starting init');
+        this.settings.callbacks['init']((variables) =>{
+          this.sharedData.init = variables
         });
       }
     }
 
-    process.on('message', function(message) {
-      self.debug.debug('IPM Message received: %s', message.toString());
+    process.on('message', (message) => {
+      this.debug.debug('IPM Message received: %s', message.toString());
       let method = 'IPM'
       try {
-        if (self.data.callbacks[method]) {
+        if (this.settings.callbacks[method]) {
           if (message.type && message.message) {
-            self.data.callbacks[method](message.type, message.message);
+            this.settings.callbacks[method](message.type, message.message);
           } else {
-            self.data.callbacks[method](message);
+            this.settings.callbacks[method](message);
           }
         } else {
           throw new Error(method + ' is not supported.');
         }
       } catch (e) {
-        self.debug.debug('Error intersepted:\n %s', e.stack);
+        this.debug.debug('Error intersepted:\n %s', e.stack);
       }
     });
-
-    let shutdownFunction = function(){
-      self.debug.worker('shutdownFunction');
-      webServer.stop(function(){
-        self.debug.worker('disconnect worker');
-        cluster.worker.disconnect();
-      })
-      
-      // call singleton on stop if it is singleton process
-      if (process.env.IS_SINGLETON) {
-        if (self.data.callbacks['singleton']) {
-          self.data.callbacks['singleton'](false, sharedData.singleton);
-        }
-      } else {
-        if (self.data.callbacks['shutdown']) {
-          self.data.callbacks['shutdown'](sharedData.init);
-        }
-      }
-    }
     
-    let multipleInt = false
-    process.on('SIGINT', function() {
-      self.debug.worker('Caught interrupt signal');
-      if (multipleInt) {
+    process.on('SIGINT', () => {
+      this.debug.worker('Caught interrupt signal');
+      if (this.multipleInt) {
         // force termination on multiple SIGINT
         process.exit(0)
       }
-      shutdownFunction()
-      multipleInt = true
+      this.shutdownFunction()
+      this.multipleInt = true
     });
 
-    process.on('SIGTERM', function() {
-      self.debug.worker('Caught termination signal');
-      shutdownFunction()
+    process.on('SIGTERM', () => {
+      this.debug.worker('Caught termination signal');
+      this.shutdownFunction()
       // On terminate we force termination in 15 sec.
       let termIn = 15000
       if (process.env.TERMINATE_IN && parseInt(process.env.TERMINATE_IN) > 0) {
@@ -235,23 +165,58 @@ function Cluster(data) {
       }, termIn)
     });
   }
-  cluster.message = function(type, message) {
-    let send = {
-      type: type,
-      message: message
+  return this
+}
+
+// Inherit from EventEmitter
+Object.setPrototypeOf(Cluster.prototype, EventEmitter.prototype);
+
+Cluster.prototype.stopCluster = function(signal) {
+  this.isShutdown = true
+  this.debug.log('Caught interrupt signal');
+  if (this.settings.pid) {
+    if (fs.existsSync(this.settings.pid)) {
+      fs.unlinkSync(this.settings.pid);
     }
-    process.send(send);
   }
-  return cluster;
+  if (this.multipleInt) {
+    // force termination on multiple SIGINT
+    process.exit(0)
+  }
+  // send signal to all workers
+  for (const id in cluster.workers) {
+    process.kill(cluster.workers[id].process.pid, signal)
+  }
+  this.multipleInt = true
+}
+
+Cluster.prototype.shutdownFunction = function() {
+  this.debug.worker('shutdownFunction');
+  this.webServer.stop(() => {
+    this.debug.worker('disconnect worker');
+    cluster.worker.disconnect();
+  })
+  
+  // call singleton on stop if it is singleton process
+  if (process.env.IS_SINGLETON) {
+    if (this.settings.callbacks['singleton']) {
+      this.settings.callbacks['singleton'](false, this.sharedData.singleton);
+    }
+  } else {
+    if (this.settings.callbacks['shutdown']) {
+      this.settings.callbacks['shutdown'](this.sharedData.init);
+    }
+  }
 }
 
 Cluster.prototype.debug = {
-  log: debugF('cluster:main'),
-  debug: debugF('cluster:debug'),
-  worker: debugF('cluster:worker')
+  log: debug('cluster:main'),
+  debug: debug('cluster:debug'),
+  worker: debug('cluster:worker')
 };
 
 // Processed by tokens data structure
-Cluster.prototype.data = {};
+Cluster.prototype.settings = {};
 
-module.exports = Cluster;
+export default Cluster;
+
