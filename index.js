@@ -33,7 +33,7 @@ Object.setPrototypeOf(Cluster.prototype, EventEmitter.prototype);
 
 Cluster.prototype.init = function () {
   let singletonProcess = false;
-  if (this.settings.callbacks['singleton']) {
+  if (this.settings.singleton) {
     singletonProcess = true;
   }
   if (cluster.isPrimary) {
@@ -100,18 +100,18 @@ Cluster.prototype.init = function () {
     this.webServer = new WebHttp(this.settings);
 
     if (process.env.IS_SINGLETON) {
-      if (this.settings.callbacks['singleton']) {
+      if (this.settings.singleton) {
         this.debug.log('Starting singleton');
-        this.settings.callbacks['singleton'](true, (variables) => {
+        this.settings.singleton(true, (variables) => {
           this.sharedData.singleton = variables;
         });
       } else {
         this.debug.log('No singleton defined');
       }
     } else {
-      if (this.settings.callbacks['init']) {
+      if (this.settings.init) {
         this.debug.log('Starting init');
-        this.settings.callbacks['init']((variables) => {
+        this.settings.init((variables) => {
           this.sharedData.init = variables;
         });
       }
@@ -121,11 +121,11 @@ Cluster.prototype.init = function () {
       this.debug.debug('IPM Message received: %s', message.toString());
       let method = 'IPM';
       try {
-        if (this.settings.callbacks[method]) {
+        if (this.settings.methods[method]) {
           if (message.type && message.message) {
-            this.settings.callbacks[method](message.type, message.message);
+            this.settings.methods[method](message.type, message.message);
           } else {
-            this.settings.callbacks[method](message);
+            this.settings.methods[method](message);
           }
         } else {
           throw new Error(method + ' is not supported.');
@@ -192,12 +192,12 @@ Cluster.prototype.shutdownFunction = function () {
 
   // call singleton on stop if it is singleton process
   if (process.env.IS_SINGLETON) {
-    if (this.settings.callbacks['singleton']) {
-      this.settings.callbacks['singleton'](false, this.sharedData.singleton);
+    if (this.settings.singleton) {
+      this.settings.singleton(false, this.sharedData.singleton);
     }
   } else {
-    if (this.settings.callbacks['shutdown']) {
-      this.settings.callbacks['shutdown'](this.sharedData.init);
+    if (this.settings.methods['shutdown']) {
+      this.settings.methods['shutdown'](this.sharedData.init);
     }
   }
 };

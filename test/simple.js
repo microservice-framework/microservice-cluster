@@ -12,18 +12,50 @@ var mcluster = new Cluster({
   port: 10000,
   count: 3,
   pid: './cluster.pid',
-  callbacks: {
-    singleton: function (isStart, variables) {
-      console.log('singleton', isStart, variables);
-      if (isStart) {
-        variables({ test: 1 });
-      }
-    },
-    init: function (callback) {
-      callback({ test: 1 });
-      console.log('init');
-    },
+  singleton: function (isStart, variables) {
+    console.log('singleton', isStart, variables);
+    if (isStart) {
+      variables({ test: 1 });
+    }
+  },
+  init: function (callback) {
+    callback({ test: 1 });
+    console.log('init');
+  },
+  methods: {
     POST: function (data, requestDetails, callback) {
+      console.log('post %O %O', data, requestDetails);
+      callback(null, {
+        code: 200,
+        answer: { test: 1, data: data },
+        headers: { test: 100 },
+      });
+    },
+    GET: function (data, requestDetails, callback) {
+      console.log('post %O %O', data, requestDetails);
+      callback(null, {
+        code: 200,
+        answer: { test: 1, data: data },
+        headers: { test: 100 },
+      });
+    },
+    PUT: function (data, requestDetails, callback) {
+      console.log('post %O %O', data, requestDetails);
+      callback(null, {
+        code: 200,
+        answer: { test: 1, data: data },
+        headers: { test: 100 },
+      });
+    },
+    DELETE: function (data, requestDetails, callback) {
+      console.log('post %O %O', data, requestDetails);
+      callback(null, {
+        code: 200,
+        answer: { test: 1, data: data },
+        headers: { test: 100 },
+      });
+    },
+    SEARCH: function (data, requestDetails, callback) {
       console.log('post %O %O', data, requestDetails);
       callback(null, {
         code: 200,
