@@ -70,7 +70,7 @@ Cluster.prototype.init = function () {
   }
   if (cluster.isPrimary) {
     if (process.env.PIDFILE) {
-      fs.writeFileSync(process.env.PIDFILE + '', process.pid + "\0");
+      fs.writeFileSync(process.env.PIDFILE + '', process.pid + '\0');
     }
     let numCPUs = 1;
     if (this.settings.count) {
