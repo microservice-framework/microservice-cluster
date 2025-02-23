@@ -50,13 +50,13 @@ WebServer.prototype.RequestHandler = function (request, response) {
     this.debug.log('decodeURIfailed: %s: %s', request.url);
   }
   this.debug.log('Request: %s: %s', request.method, request.url);
-  var _buffer = '';
+  let _buffer = '';
 
   request.addListener('data', (chunk) => {
     _buffer += chunk;
   });
   request.addListener('end', () => {
-    var requestDetails = {};
+    let requestDetails = {};
     requestDetails.url = request.url.substr(1);
     requestDetails.headers = request.headers;
     requestDetails._buffer = _buffer;
@@ -70,8 +70,8 @@ WebServer.prototype.RequestHandler = function (request, response) {
       try {
         decodedData = this.decodeData(request.headers['content-type'], _buffer);
       } catch (e) {
-        if (this.data.callbacks['responseHandler']) {
-          return this.data.callbacks['responseHandler'](e, null, response, requestDetails);
+        if (this.data.methods['responseHandler']) {
+          return this.data.methods['responseHandler'](e, null, response, requestDetails);
         }
         response.writeHead(503, () => {
           return this.validateHeaders({});
@@ -84,14 +84,14 @@ WebServer.prototype.RequestHandler = function (request, response) {
     } else {
       decodedData = requestDetails.url;
     }
-    if (this.data.callbacks.loader) {
-      this.data.callbacks.loader(request.method, _buffer, requestDetails, function (err) {
+    if (this.data.methods.loader) {
+      this.data.methods.loader(request.method, _buffer, requestDetails, function (err) {
         if (err) {
           if (!err.code) {
             err.code = 403;
           }
-          if (this.data.callbacks['responseHandler']) {
-            return this.data.callbacks['responseHandler'](err, null, response, requestDetails);
+          if (this.data.methods['responseHandler']) {
+            return this.data.methods['responseHandler'](err, null, response, requestDetails);
           }
           response.writeHead(err.code, () => {
             return this.validateHeaders({});
@@ -137,14 +137,14 @@ WebServer.prototype.encodeHandlerResponseAnswer = function (handlerResponse) {
  * Process request and if implemented, call handlers.
  */
 WebServer.prototype.RequestValidate = function (request, response, _buffer, requestDetails, data) {
-  if (this.data.callbacks.validate) {
-    this.data.callbacks.validate(request.method, _buffer, requestDetails, function (err) {
+  if (this.data.methods.validate) {
+    this.data.methods.validate(request.method, _buffer, requestDetails, function (err) {
       if (err) {
         if (!err.code) {
           err.code = 403;
         }
-        if (this.data.callbacks['responseHandler']) {
-          return this.data.callbacks['responseHandler'](err, null, response, requestDetails);
+        if (this.data.methods['responseHandler']) {
+          return this.data.methods['responseHandler'](err, null, response, requestDetails);
         }
         response.writeHead(err.code, () => {
           return this.validateHeaders({});
@@ -167,13 +167,13 @@ WebServer.prototype.RequestValidate = function (request, response, _buffer, requ
 WebServer.prototype.RequestProcess = function (method, response, requestDetails, data) {
   this.debug.debug('Parsed data: %O', data);
   try {
-    if (this.data.callbacks[method]) {
+    if (this.data.methods[method]) {
       if (method == 'OPTIONS') {
-        return this.data.callbacks[method](data, requestDetails, this.data.callbacks, (err, handlerResponse) => {
+        return this.data.methods[method](data, requestDetails, this.data.methods, (err, handlerResponse) => {
           this.callbackExecutor(err, handlerResponse, response, requestDetails);
         });
       }
-      this.data.callbacks[method](data, requestDetails, (err, handlerResponse) => {
+      this.data.methods[method](data, requestDetails, (err, handlerResponse) => {
         this.callbackExecutor(err, handlerResponse, response, requestDetails);
       });
     } else {
@@ -183,8 +183,8 @@ WebServer.prototype.RequestProcess = function (method, response, requestDetails,
     this.debug.debug('Error intersepted:\n %s', e.stack);
     e.code = 500;
 
-    if (this.data.callbacks['responseHandler']) {
-      return this.data.callbacks['responseHandler'](e, null, response, requestDetails);
+    if (this.data.methods['responseHandler']) {
+      return this.data.methods['responseHandler'](e, null, response, requestDetails);
     }
     response.writeHead(e.code, () => {
       return this.validateHeaders({});
@@ -207,8 +207,8 @@ WebServer.prototype.callbackExecutor = function (err, handlerResponse, response,
     return;
   }
 
-  if (this.data.callbacks['responseHandler']) {
-    return this.data.callbacks['responseHandler'](err, handlerResponse, response, requestDetails);
+  if (this.data.methods['responseHandler']) {
+    return this.data.methods['responseHandler'](err, handlerResponse, response, requestDetails);
   }
 
   if (err) {
