@@ -69,8 +69,8 @@ Cluster.prototype.init = function () {
     singletonProcess = true;
   }
   if (cluster.isPrimary) {
-    if (this.settings.pid) {
-      fs.writeFileSync(this.settings.pid + '', process.pid + '');
+    if (process.env.PIDFILE) {
+      fs.writeFileSync(process.env.PIDFILE + '', process.pid + "\0");
     }
     let numCPUs = 1;
     if (this.settings.count) {
@@ -202,9 +202,9 @@ Object.setPrototypeOf(Cluster.prototype, EventEmitter.prototype);
 Cluster.prototype.stopCluster = function (signal) {
   this.isShutdown = true;
   this.debug.log('Caught interrupt signal');
-  if (this.settings.pid) {
-    if (fs.existsSync(this.settings.pid)) {
-      fs.unlinkSync(this.settings.pid);
+  if (process.env.PIDFILE) {
+    if (fs.existsSync(process.env.PIDFILE)) {
+      fs.unlinkSync(process.env.PIDFILE);
     }
   }
   if (this.multipleInt) {
