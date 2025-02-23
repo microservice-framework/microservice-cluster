@@ -168,13 +168,13 @@ WebServer.prototype.RequestProcess = function (method, response, requestDetails,
   try {
     if (this.data.methods[method]) {
       if (method == 'OPTIONS') {
-        return this.data.methods[method](data, requestDetails, this.data.methods, (err, handlerResponse) => {
-          this.callbackExecutor(err, handlerResponse, response, requestDetails);
+        return this.data.methods[method](data, requestDetails, this.data.methods, (handlerResponse) => {
+          this.callbackExecutor(handlerResponse, response, requestDetails);
         });
       }
       if (method == 'PUT') {
-        return this.data.methods[method](requestDetails.url, data, requestDetails, (err, handlerResponse) => {
-          this.callbackExecutor(err, handlerResponse, response, requestDetails);
+        return this.data.methods[method](requestDetails.url, data, requestDetails, (handlerResponse) => {
+          this.callbackExecutor(handlerResponse, response, requestDetails);
         });
       }
       // no body elements for GET and DELETE
@@ -183,8 +183,8 @@ WebServer.prototype.RequestProcess = function (method, response, requestDetails,
       }
 
       // POST, SEARCH, PATCH etc
-      this.data.methods[method](data, requestDetails, (err, handlerResponse) => {
-        this.callbackExecutor(err, handlerResponse, response, requestDetails);
+      this.data.methods[method](data, requestDetails, (handlerResponse) => {
+        this.callbackExecutor(handlerResponse, response, requestDetails);
       });
     } else {
       throw new Error(method + ' is not supported.');
@@ -207,36 +207,27 @@ WebServer.prototype.RequestProcess = function (method, response, requestDetails,
 /**
  * Output answer from handlers.
  */
-WebServer.prototype.callbackExecutor = function (err, handlerResponse, response, requestDetails) {
+WebServer.prototype.callbackExecutor = function (handlerResponse, response, requestDetails) {
   if (!response.connection) {
-    if (err) {
-      this.debug.log('Writing after socket is closed err: %O', err);
-    }
     this.debug.log('Writing after socket is closed handlerResponse: %O', handlerResponse);
     this.debug.log('Writing after socket is closed requestDetails: %O', requestDetails);
     return;
   }
 
   if (this.data.responseHandler) {
-    return this.data.responseHandler(err, handlerResponse, response, requestDetails);
+    return this.data.responseHandler(handlerResponse, response, requestDetails);
   }
 
-  if (err) {
-    if (!err.code) {
-      err.code = 503;
+  if (handlerResponse.error) {
+    if (!handlerResponse.code) {
+      handlerResponse.code = 503;
     }
-    this.debug.debug('Handler responce error:\n %O', err);
-    response.writeHead(err.code, this.validateHeaders({}));
-    response.write(JSON.stringify({ message: err.message }, null, 2));
-    response.end('\n');
-  } else {
-    this.debug.debug('Handler responce:\n %O', handlerResponse);
-    this.encodeHandlerResponseAnswer(handlerResponse);
-
-    response.writeHead(handlerResponse.code, this.validateHeaders(handlerResponse.headers));
-    response.write(handlerResponse.answer);
-    response.end('\n');
   }
+
+  this.encodeHandlerResponseAnswer(handlerResponse);
+  response.writeHead(handlerResponse.code, this.validateHeaders(handlerResponse.headers));
+  response.write(handlerResponse.answer);
+  response.end('\n');
 };
 
 /**
