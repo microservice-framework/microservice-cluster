@@ -136,8 +136,8 @@ WebServer.prototype.encodeHandlerResponseAnswer = function (handlerResponse) {
  * Process request and if implemented, call handlers.
  */
 WebServer.prototype.RequestValidate = function (request, response, _buffer, requestDetails, data) {
-  if (this.data.methods.validate) {
-    this.data.methods.validate(request.method, _buffer, requestDetails, (err) => {
+  if (this.data.validate) {
+    this.data.validate(request.method, _buffer, requestDetails, (err) => {
       if (err) {
         if (!err.code) {
           err.code = 403;
