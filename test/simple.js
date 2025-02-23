@@ -9,9 +9,6 @@
 import Cluster from '../index.js';
 
 var ms = new Cluster({
-  port: 10000,
-  count: 1,
-  pid: './cluster.pid',
   loader: function (request, callback) {
     console.log('loader', request.url);
     request.test = true;
@@ -21,11 +18,17 @@ var ms = new Cluster({
     console.log('singleton', isStart, variables);
     if (isStart) {
       variables({ test: 1 });
+    } else {
+      process.exit(0);
     }
   },
   init: function (callback) {
     callback({ test: 1 });
     console.log('init');
+  },
+  shutdown: function (init) {
+    console.log('shutdown', init);
+    process.exit(0);
   },
   /*responseHandler: function(error, handlerResponse, response, request) {
     console.log('responseHandler', error, handlerResponse);
@@ -97,5 +100,3 @@ ms.on('online', function (worker) {
 ms.on('exit', function (worker, code, signal) {
   console.log('Worker %s died. code %s signal %s', worker.process.pid, code, signal);
 });
-
-console.log('mcluster:!');

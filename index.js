@@ -73,10 +73,14 @@ Cluster.prototype.init = function () {
       fs.writeFileSync(process.env.PIDFILE + '', process.pid + '\0');
     }
     let numCPUs = 1;
-    if (this.settings.count) {
-      numCPUs = this.settings.count;
+    if (process.env.WORKERS) {
+      numCPUs = parseInt(process.env.WORKERS);
     } else {
       numCPUs = cpus().length;
+    }
+
+    if (numCPUs < 1) {
+      numCPUs = 1;
     }
 
     // start separated process for singletone
@@ -141,8 +145,7 @@ Cluster.prototype.init = function () {
         this.debug.log('No singleton defined');
       }
     } else {
-      process.title = 'worker';
-      console.log('cluster', cluster.worker.id);
+      process.title = 'worker-' + cluster.worker.id;
       this.webServer = new WebHttp(this.settings);
       if (this.settings.init) {
         this.debug.log('Starting init');
@@ -233,8 +236,8 @@ Cluster.prototype.shutdownFunction = function () {
       this.settings.singleton(false, this.sharedData.singleton);
     }
   } else {
-    if (this.settings.methods['shutdown']) {
-      this.settings.methods['shutdown'](this.sharedData.init);
+    if (this.settings.shutdown) {
+      this.settings.shutdown(this.sharedData.init);
     }
   }
 };

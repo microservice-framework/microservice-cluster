@@ -19,17 +19,16 @@ function WebServer(data) {
   });
 
   // Use random port if port settings is not provided.
-  if (!this.data.port) {
-    this.data.port = 0;
-  } else {
-    this.data.port = parseInt(this.data.port);
+  let port = parseInt(process.env.PORT);
+  if (!port) {
+    port = 2001;
   }
 
   // Use address if provided.
   if (this.data.hostname) {
-    this.server.listen(this.data.port, this.data.hostname);
+    this.server.listen(port, this.data.hostname);
   } else {
-    this.server.listen(this.data.port);
+    this.server.listen(port);
   }
 
   this.server.on('listening', () => {
