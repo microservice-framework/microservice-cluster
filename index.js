@@ -6,16 +6,48 @@
 
 'use strict';
 
+// Load environment variables from .env file
+import dotenv from 'dotenv';
+dotenv.config();
+
 import fs from 'fs';
 import { spawn } from 'child_process';
+
+if (!process.env.DEVEL && process.env.LOGFILE && !process.env.BACKGROUND) {
+  var spawnArgvs = [];
+  for (var i in process.argv) {
+    if (i > 0) {
+      spawnArgvs.push(process.argv[i]);
+    }
+  }
+  var env = process.env;
+  env.BACKGROUND = true;
+  spawn(process.argv0, spawnArgvs, {
+    stdio: 'ignore',
+    detached: true,
+    env: env,
+  }).unref();
+  process.exit();
+}
+
+if (process.env.DEVEL) {
+  if (process.env.DEVEL_DEBUG) {
+    process.env.DEBUG = process.env.DEVEL_DEBUG;
+  } else {
+    process.env.DEBUG = '*';
+  }
+}
+
+if (process.env.BACKGROUND) {
+  process.env.DEBUG_COLORS = false;
+  var logFile = fs.createWriteStream(process.env.LOGFILE, { flags: 'a' });
+  process.stdout.write = process.stderr.write = logFile.write.bind(logFile);
+}
+
 import { cpus } from 'node:os';
 import cluster from 'node:cluster';
 import debug from 'debug';
 import WebHttp from './includes/web.js';
-
-// Load environment variables from .env file
-import dotenv from 'dotenv';
-dotenv.config();
 
 import { EventEmitter } from 'node:events';
 
@@ -47,13 +79,14 @@ Cluster.prototype.init = function () {
       numCPUs = cpus().length;
     }
 
+    // start separated process for singletone
+    if (singletonProcess === true) {
+      let worker = cluster.fork({ IS_SINGLETON: true });
+      singletonProcess = worker.id;
+    }
+
     this.debug.log('Starting up %s workers.', numCPUs);
     for (var i = 0; i < numCPUs; i++) {
-      if (singletonProcess === true) {
-        let worker = cluster.fork({ IS_SINGLETON: true });
-        singletonProcess = worker.id;
-        continue;
-      }
       cluster.fork();
     }
 
@@ -97,9 +130,8 @@ Cluster.prototype.init = function () {
       }
     });
   } else {
-    this.webServer = new WebHttp(this.settings);
-
     if (process.env.IS_SINGLETON) {
+      process.title = 'singleton';
       if (this.settings.singleton) {
         this.debug.log('Starting singleton');
         this.settings.singleton(true, (variables) => {
@@ -109,6 +141,9 @@ Cluster.prototype.init = function () {
         this.debug.log('No singleton defined');
       }
     } else {
+      process.title = 'worker';
+      console.log('cluster', cluster.worker.id);
+      this.webServer = new WebHttp(this.settings);
       if (this.settings.init) {
         this.debug.log('Starting init');
         this.settings.init((variables) => {
@@ -131,7 +166,7 @@ Cluster.prototype.init = function () {
           throw new Error(method + ' is not supported.');
         }
       } catch (e) {
-        this.debug.debug('Error intersepted:\n %s', e.stack);
+        this.debug.debug('Error intercepted:\n %s', e.stack);
       }
     });
 
@@ -185,10 +220,12 @@ Cluster.prototype.stopCluster = function (signal) {
 
 Cluster.prototype.shutdownFunction = function () {
   this.debug.worker('shutdownFunction');
-  this.webServer.stop(() => {
-    this.debug.worker('disconnect worker');
-    cluster.worker.disconnect();
-  });
+  if (this.webServer) {
+    this.webServer.stop(() => {
+      this.debug.worker('disconnect worker');
+      cluster.worker.disconnect();
+    });
+  }
 
   // call singleton on stop if it is singleton process
   if (process.env.IS_SINGLETON) {
