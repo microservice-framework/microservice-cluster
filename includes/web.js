@@ -84,7 +84,7 @@ WebServer.prototype.RequestHandler = function (request, response) {
       decodedData = requestDetails.url;
     }
     if (this.data.loader) {
-      this.data.loader(requestDetails, (err) => {
+      this.data.loader(requestDetails).then((err) => {
         if (err) {
           if (!err.code) {
             err.code = 403;
@@ -97,14 +97,22 @@ WebServer.prototype.RequestHandler = function (request, response) {
           });
           response.write(JSON.stringify({ message: err.message }, null, 2));
           response.end('\n');
-          this.debug.debug('Validation error: %s', err.message);
+          this.debug.debug('Loading error: %s', err.message);
           return;
         }
-        return this.RequestValidate(request, response, _buffer, requestDetails, decodedData);
-      });
+        this.RequestValidate(request, response, _buffer, requestDetails, decodedData).then((isValidated) => {
+          if(isValidated) {
+            this.RequestProcess(request.method, response, requestDetails, decodedData);
+          }
+        });
+      })
       return;
     }
-    return this.RequestValidate(request, response, _buffer, requestDetails, decodedData);
+    this.RequestValidate(request, response, _buffer, requestDetails, decodedData).then((isValidated) => {
+      if(isValidated) {
+        this.RequestProcess(request.method, response, requestDetails, decodedData);
+      }
+    });
   });
 };
 
@@ -135,29 +143,26 @@ WebServer.prototype.encodeHandlerResponseAnswer = function (handlerResponse) {
 /**
  * Process request and if implemented, call handlers.
  */
-WebServer.prototype.RequestValidate = function (request, response, _buffer, requestDetails, data) {
+WebServer.prototype.RequestValidate = async function (request, response, _buffer, requestDetails, data) {
   if (this.data.validate) {
-    this.data.validate(request.method, _buffer, requestDetails, (err) => {
-      if (err) {
-        if (!err.code) {
-          err.code = 403;
-        }
-        if (this.data.responseHandler) {
-          return this.data.responseHandler(err, null, response, requestDetails);
-        }
-        response.writeHead(err.code, () => {
-          return this.validateHeaders({});
-        });
-        response.write(JSON.stringify({ message: err.message }, null, 2));
-        response.end('\n');
-        this.debug.debug('Validation error: %s', err.message);
-        return;
-      }
-      return this.RequestProcess(request.method, response, requestDetails, data);
+    let isAllowed = await this.data.validate(request.method, _buffer, requestDetails);
+    if (isAllowed === true) {
+      return true
+    }
+    // if custom handler exists
+    if (this.data.responseHandler) {
+      return this.data.responseHandler(isAllowed, null, response, requestDetails);
+    }
+
+    response.writeHead(403, () => {
+      return this.validateHeaders({});
     });
-    return;
+    response.write(JSON.stringify({ message: isAllowed.message }, null, 2));
+    response.end('\n');
+    this.debug.debug('Validation error: %s', isAllowed.message);
+    return false
   }
-  return this.RequestProcess(request.method, response, requestDetails, data);
+  return true
 };
 
 /**
@@ -168,14 +173,26 @@ WebServer.prototype.RequestProcess = function (method, response, requestDetails,
   try {
     if (this.data.methods[method]) {
       if (method == 'OPTIONS') {
-        return this.data.methods[method](data, requestDetails, this.data.methods, (handlerResponse) => {
+        return this.data.methods[method](data, requestDetails, this.data.methods).then((handlerResponse) => {
           this.callbackExecutor(handlerResponse, response, requestDetails);
-        });
+        }).catch((e) => {
+          this.debug.debug('Error intersepted:\n %s', e.stack);
+          e.code = 500;
+
+          if (this.data.responseHandler) {
+            return this.data.responseHandler(e, null, response, requestDetails);
+          }
+          response.writeHead(e.code, () => {
+            return this.validateHeaders({});
+          });
+          response.write(JSON.stringify({ error: e.message }, null, 2));
+          response.end('\n');
+        })
       }
       if (method == 'PUT') {
-        return this.data.methods[method](requestDetails.url, data, requestDetails, (handlerResponse) => {
+        return this.data.methods[method](requestDetails.url, data, requestDetails).then((handlerResponse) => {
           this.callbackExecutor(handlerResponse, response, requestDetails);
-        });
+        })
       }
       // no body elements for GET and DELETE
       if (['GET', 'DELETE'].includes(method)) {
@@ -183,9 +200,21 @@ WebServer.prototype.RequestProcess = function (method, response, requestDetails,
       }
 
       // POST, SEARCH, PATCH etc
-      this.data.methods[method](data, requestDetails, (handlerResponse) => {
+      return this.data.methods[method]( data, requestDetails).then((handlerResponse) => {
         this.callbackExecutor(handlerResponse, response, requestDetails);
-      });
+      }).catch((e) => {
+        this.debug.debug('Error intersepted:\n %s', e.stack);
+        e.code = 500;
+    
+        if (this.data.responseHandler) {
+          return this.data.responseHandler(e, null, response, requestDetails);
+        }
+        response.writeHead(e.code, () => {
+          return this.validateHeaders({});
+        });
+        response.write(JSON.stringify({ error: e.message }, null, 2));
+        response.end('\n');
+      })
     } else {
       throw new Error(method + ' is not supported.');
     }
