@@ -55,6 +55,7 @@ export function Cluster(settings) {
   this.settings = settings;
   this.isShutdown = false;
   this.multipleInt = false;
+  this.cluster = cluster;
   this.sharedData = {};
   EventEmitter.call(this); // Call EventEmitter constructor
   this.init();
@@ -138,7 +139,7 @@ Cluster.prototype.init = function () {
       process.title = 'singleton';
       if (this.settings.singleton) {
         this.debug.log('Starting singleton');
-        this.settings.singleton(true, (variables) => {
+        this.settings.singleton.bind(this)(true, (variables) => {
           this.sharedData.singleton = variables;
         });
       } else {
@@ -149,7 +150,7 @@ Cluster.prototype.init = function () {
       this.webServer = new WebHttp(this.settings);
       if (this.settings.init) {
         this.debug.log('Starting init');
-        this.settings.init((variables) => {
+        this.settings.init.bind(this)((variables) => {
           this.sharedData.init = variables;
         });
       }
@@ -233,11 +234,11 @@ Cluster.prototype.shutdownFunction = function () {
   // call singleton on stop if it is singleton process
   if (process.env.IS_SINGLETON) {
     if (this.settings.singleton) {
-      this.settings.singleton(false, this.sharedData.singleton);
+      this.settings.singleton.bind(this)(false, this.sharedData.singleton);
     }
   } else {
     if (this.settings.shutdown) {
-      this.settings.shutdown(this.sharedData.init);
+      this.settings.shutdown.bind(this)(this.sharedData.init);
     }
   }
 };
