@@ -251,6 +251,13 @@ WebServer.prototype.callbackExecutor = function (handlerResponse, response, requ
     if (!handlerResponse.code) {
       handlerResponse.code = 503;
     }
+    if(!handlerResponse.answer) {
+      if(handlerResponse.error.message) {
+        handlerResponse.answer = {message: handlerResponse.error.message}
+      } else {
+        handlerResponse.answer = {message: handlerResponse.error}
+      }
+    }
   }
 
   this.encodeHandlerResponseAnswer(handlerResponse);
