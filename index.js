@@ -57,6 +57,7 @@ export function Cluster(settings) {
   this.multipleInt = false;
   this.cluster = cluster;
   this.sharedData = {};
+  this.singletonProcess = false
   EventEmitter.call(this); // Call EventEmitter constructor
   this.init();
 }
@@ -65,9 +66,9 @@ export function Cluster(settings) {
 Object.setPrototypeOf(Cluster.prototype, EventEmitter.prototype);
 
 Cluster.prototype.init = function () {
-  let singletonProcess = false;
+  this.singletonProcess = false;
   if (this.settings.singleton) {
-    singletonProcess = true;
+    this.singletonProcess = true;
   }
   if (cluster.isPrimary) {
     if (process.env.PIDFILE) {
@@ -85,9 +86,9 @@ Cluster.prototype.init = function () {
     }
 
     // start separated process for singletone
-    if (singletonProcess === true) {
+    if (this.singletonProcess === true) {
       let worker = cluster.fork({ IS_SINGLETON: true });
-      singletonProcess = worker.id;
+      this.singletonProcess = worker;
     }
 
     this.debug.log('Starting up %s workers.', numCPUs);
@@ -107,9 +108,9 @@ Cluster.prototype.init = function () {
         return;
       }
       this.debug.log('Starting a new worker');
-      if (singletonProcess === worker.id) {
+      if (this.singletonProcess.id === worker.id) {
         let worker = cluster.fork({ IS_SINGLETON: true });
-        singletonProcess = worker.id;
+        this.singletonProcess = worker;
         return;
       }
       cluster.fork();
@@ -214,6 +215,11 @@ Cluster.prototype.stopCluster = function (signal) {
   if (this.multipleInt) {
     // force termination on multiple SIGINT
     process.exit(0);
+  }
+  // singletop stop
+  if(this.singletonProcess) {
+    this.debug.log('singletonProcess', this.singletonProcess.process.pid)
+    process.kill(this.singletonProcess.process.pid, signal);
   }
   // send signal to all workers
   for (const id in cluster.workers) {
