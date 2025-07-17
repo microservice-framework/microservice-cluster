@@ -251,6 +251,10 @@ WebServer.prototype.callbackExecutor = function (handlerResponse, response, requ
     if (!handlerResponse.code) {
       handlerResponse.code = 503;
     }
+    let isValidHttpCode = code => code >= 100 && code <= 599;
+    if (!isValidHttpCode(handlerResponse.code)) {
+      handlerResponse.code = 503
+    }
     if(!handlerResponse.answer) {
       if(handlerResponse.error.message) {
         handlerResponse.answer = {message: handlerResponse.error.message}
