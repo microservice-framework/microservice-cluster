@@ -258,6 +258,13 @@ WebServer.prototype.callbackExecutor = function(err, handlerResponse, response, 
     if (!err.code) {
       err.code = 503
     }
+    let isValidHttpCode = code => code >= 100 && code <= 599;
+    if (!isValidHttpCode(err.code)) {
+      err.code = 503
+    }
+    if(!err.message) {
+      err.message = 'unknown error'
+    }
     self.debug.debug('Handler responce error:\n %O', err);
     response.writeHead(err.code, self.validateHeaders({}));
     response.write(JSON.stringify({message: err.message }, null, 2));
