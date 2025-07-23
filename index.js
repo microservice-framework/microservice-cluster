@@ -100,6 +100,12 @@ function Cluster(data) {
       webServer.stop();
     });
 
+    // Worker process logic here
+    process.on('uncaughtException', function (err) {
+      console.log('Uncaught Exception in worker', err.stack || err);
+      process.exit(1);
+    });
+
     process.on('SIGTERM', function() {
         self.debug.worker('Caught termination signal');
         webServer.stop();
