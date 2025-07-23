@@ -234,6 +234,20 @@ function Cluster(data) {
         process.exit(0)
       }, termIn)
     });
+
+        // Worker process logic here
+    process.on('uncaughtException', function (err) {
+      console.log('Uncaught Exception in worker', err.stack || err);
+      shutdownFunction()
+      // On terminate we force termination in 15 sec.
+      let termIn = 15000
+      if (process.env.TERMINATE_IN && parseInt(process.env.TERMINATE_IN) > 0) {
+        termIn = parseInt(process.env.TERMINATE_IN)
+      }
+      setTimeout(function(){
+        process.exit(0)
+      }, termIn)
+    });
   }
   cluster.message = function(type, message) {
     let send = {
